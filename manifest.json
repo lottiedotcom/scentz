@@ -1,0 +1,17 @@
+{
+  "name": "Scent Mood Board Builder",
+  "short_name": "ScentStudio",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffd1dc",
+  "theme_color": "#ffd1dc",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3024/3024641.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
