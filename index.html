@@ -111,6 +111,7 @@
 
         /* --- MOOD BOARD STYLING --- */
         #capture-area {
+            --smush-scale: 1; /* The magic scaling multiplier */
             width: 100%;
             max-width: 500px;
             aspect-ratio: 1 / 1; 
@@ -122,12 +123,11 @@
             position: relative;
         }
         
-        /* The dynamic photo area */
         #top-section {
             width: 100%;
-            height: 50%; /* Default starting ratio */
+            height: 50%; 
             flex-shrink: 0;
-            display: none; /* Hidden until photo added */
+            display: none; 
         }
 
         #main-image-display {
@@ -137,19 +137,18 @@
             display: block;
         }
 
-        /* The draggable divider */
         #resizer {
             width: 100%;
             height: 16px;
             background-color: rgba(0, 0, 0, 0.05);
             cursor: row-resize;
-            display: none; /* Hidden until photo added */
+            display: none; 
             justify-content: center;
             align-items: center;
             flex-shrink: 0;
             z-index: 10;
         }
-        /* The little grey grip line */
+        
         .resizer-handle {
             width: 40px;
             height: 4px;
@@ -157,21 +156,21 @@
             border-radius: 2px;
         }
         
-        /* The notes area */
+        /* The dynamically scaled notes area */
         #bottom-section { 
-            padding: 15px;
-            flex: 1; /* Takes whatever space is left */
+            padding: calc(15px * var(--smush-scale));
+            flex: 1; 
             overflow: hidden; 
         }
         
         #board-title-display {
             width: 100%;
-            font-size: 1.5rem;
-            padding: 15px;
+            font-size: calc(1.5rem * var(--smush-scale));
+            padding: calc(15px * var(--smush-scale));
+            margin-bottom: calc(20px * var(--smush-scale));
             background-color: white; 
             border: 1px solid #cfcfcf; 
             color: #333;
-            margin-bottom: 20px;
             box-sizing: border-box;
             text-align: left;
             border-radius: 0 !important; 
@@ -180,7 +179,7 @@
         
         #selected-notes-container {
             display: flex;
-            gap: 8px; 
+            gap: calc(8px * var(--smush-scale)); 
             flex-wrap: wrap;
         }
         
@@ -188,23 +187,23 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 82px; 
-            border: 2px solid white; 
-            padding: 6px;
+            width: calc(82px * var(--smush-scale)); 
+            border: calc(2px * var(--smush-scale)) solid white; 
+            padding: calc(6px * var(--smush-scale));
             cursor: pointer;
             box-sizing: border-box;
         }
         
         .board-note img {
-            width: 66px; 
-            height: 66px;
+            width: calc(66px * var(--smush-scale)); 
+            height: calc(66px * var(--smush-scale));
             object-fit: cover;
             border-radius: 0; 
-            margin-bottom: 8px;
+            margin-bottom: calc(8px * var(--smush-scale));
         }
         
         .board-note span {
-            font-size: 0.9rem;
+            font-size: calc(0.9rem * var(--smush-scale));
             text-align: center;
             color: #111;
             line-height: 1.2;
@@ -212,7 +211,6 @@
             width: 100%;
         }
 
-        /* Database Management Section */
         details {
             width: 100%;
             max-width: 500px;
@@ -258,6 +256,7 @@
         <button onclick="saveImage()" style="background: #28a745;">Save the image</button>
     </div>
 
+    <!-- MOOD BOARD DISPLAY -->
     <div id="capture-area">
         
         <div id="top-section">
@@ -301,20 +300,18 @@
             navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
         }
 
-        // --- Draggable Resizer Logic ---
+        // --- Draggable Resizer & Smush Logic ---
         const resizer = document.getElementById('resizer');
         const topSection = document.getElementById('top-section');
         const captureArea = document.getElementById('capture-area');
         let isResizing = false;
 
-        // Desktop
         resizer.addEventListener('mousedown', () => {
             isResizing = true;
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', stopResizing, { once: true });
         });
 
-        // Mobile
         resizer.addEventListener('touchstart', (e) => {
             isResizing = true;
             document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -325,7 +322,7 @@
         
         function handleTouchMove(e) {
             if (isResizing) {
-                e.preventDefault(); // Prevents screen scrolling while dragging the bar
+                e.preventDefault(); 
                 adjustHeight(e.touches[0].clientY);
             }
         }
@@ -334,11 +331,19 @@
             const containerRect = captureArea.getBoundingClientRect();
             let newHeightPercent = ((clientY - containerRect.top) / containerRect.height) * 100;
             
-            // Constrain limits so it doesn't squish too far
+            // Constrain limits
             if (newHeightPercent < 10) newHeightPercent = 10;
             if (newHeightPercent > 90) newHeightPercent = 90;
             
             topSection.style.height = `${newHeightPercent}%`;
+            
+            // Calculate the Smush Scale!
+            // 50% height acts as our standard 1.0 baseline.
+            const bottomPercent = 100 - newHeightPercent;
+            const scale = bottomPercent / 50; 
+            
+            // Update the CSS variable to shrink/grow all fonts, images, and paddings instantly
+            captureArea.style.setProperty('--smush-scale', scale);
         }
 
         function stopResizing() {
@@ -346,8 +351,8 @@
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('touchmove', handleTouchMove);
         }
-        // -------------------------------
 
+        // --- UI Interactions ---
 
         function toggleLibrary() {
             const lib = document.getElementById('library-section');
@@ -370,7 +375,6 @@
                     const img = document.getElementById('main-image-display');
                     img.src = e.target.result;
                     
-                    // Show the photo section and the resizer handle
                     document.getElementById('top-section').style.display = 'block';
                     document.getElementById('resizer').style.display = 'flex';
                 };
@@ -393,7 +397,6 @@
             const titleInput = document.getElementById('board-title-display');
             const resizerHandle = document.getElementById('resizer');
             
-            // Cleanup UI for the screenshot
             const originalPlaceholder = titleInput.placeholder;
             if(!titleInput.value) { titleInput.placeholder = ""; }
             const wasResizerVisible = resizerHandle.style.display !== 'none';
@@ -409,14 +412,13 @@
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 
-                // Restore UI
                 titleInput.placeholder = originalPlaceholder;
                 if(wasResizerVisible) resizerHandle.style.display = 'flex';
             });
         }
 
 
-        // --- Database Logic (IndexedDB) ---
+        // --- Database Logic ---
         let db;
         let allNotes = [];
         const request = indexedDB.open("ScentDatabase", 1);
@@ -519,3 +521,4 @@
     </script>
 </body>
 </html>
+
