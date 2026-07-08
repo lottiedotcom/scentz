@@ -7,11 +7,10 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <!-- html2canvas for saving the image -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
-            --bg-board-default: #ffffff;
+            --bg-board-default: #c9f5d1; /* Set to the pale green from your reference */
             --app-pink: #ffd1dc;
             --dark-pink: #ffb6c1;
             --button-grey: #4a4a4a;
@@ -41,7 +40,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
-        /* Unified Button & Input Styles */
         button, .file-upload-btn, input[type="text"], input[type="search"] {
             width: 100%;
             padding: 12px;
@@ -63,11 +61,8 @@
         }
         
         button:active, .file-upload-btn:active { background: #333; }
-        
-        /* Hide default file input, use label as button */
         input[type="file"] { display: none; }
 
-        /* Color Picker Styling */
         .color-picker-wrapper {
             display: flex;
             align-items: center;
@@ -87,7 +82,7 @@
 
         /* Expandable Library Section */
         #library-section {
-            display: none; /* Hidden until button is clicked */
+            display: none; 
             flex-direction: column;
             gap: 10px;
             background: #fdfdfd;
@@ -115,62 +110,72 @@
             border: 1px solid #e0e0e0;
         }
 
-        /* Mood Board Container */
+        /* --- EXACT MOOD BOARD STYLING --- */
         #capture-area {
             width: 100%;
-            max-width: 500px;
+            max-width: 550px;
             background-color: var(--bg-board-default);
             display: flex;
             flex-direction: column;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            /* Removed border-radius to match the sharp edges of the reference */
         }
+        
         #main-image-display {
             width: 100%;
             height: 320px;
             object-fit: cover;
-            background-color: #f7f7f7;
             display: none;
         }
-        .board-content { padding: 20px; }
+        
+        .board-content { 
+            padding: 15px; 
+        }
+        
         #board-title-display {
             width: 100%;
-            font-size: 1.4rem;
-            padding: 8px 0;
-            border: none;
-            border-bottom: 1px solid #ccc;
+            font-size: 1.5rem;
+            padding: 15px;
+            background-color: white; /* Solid white background */
+            border: 1px solid #cfcfcf; /* Thin grey outline */
+            color: #333;
             margin-bottom: 20px;
-            background: transparent;
-            color: #222;
+            box-sizing: border-box;
+            text-align: left; /* Aligned to the left like the reference */
         }
+        
         #selected-notes-container {
             display: flex;
-            gap: 12px;
+            gap: 8px; /* Spacing between the notes */
             flex-wrap: wrap;
         }
+        
         .board-note {
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 75px;
+            width: 82px; /* Fixed width container */
+            border: 2px solid white; /* The iconic white border around the whole note */
+            padding: 6px;
             cursor: pointer;
+            box-sizing: border-box;
         }
+        
         .board-note img {
-            width: 70px;
-            height: 70px;
+            width: 66px; 
+            height: 66px;
             object-fit: cover;
-            border-radius: 4px;
-            margin-bottom: 4px;
+            border-radius: 0; /* Sharp square corners */
+            margin-bottom: 8px;
         }
+        
         .board-note span {
-            font-size: 0.75rem;
+            font-size: 0.9rem;
             text-align: center;
-            color: #333;
-            line-height: 1.1;
+            color: #111;
+            line-height: 1.2;
         }
 
-        /* Database Management Section (Hidden away) */
+        /* Database Management Section */
         details {
             width: 100%;
             max-width: 500px;
@@ -193,39 +198,30 @@
 </head>
 <body>
 
-    <!-- 1. MAIN UI PANEL -->
     <div class="ui-panel">
-        
-        <!-- Pick Your Notes Toggle -->
         <button onclick="toggleLibrary()" style="background: var(--dark-pink); color: #333;">Pick your notes</button>
         
-        <!-- Library & Search (Expands when button above is clicked) -->
         <div id="library-section">
             <input type="search" id="search-bar" placeholder="Search notes..." oninput="filterDatabase()">
             <div id="database-list"></div>
         </div>
 
-        <!-- Title Input -->
         <input type="text" id="title-input" placeholder="Enter your mood board title here" oninput="updateTitle()">
 
-        <!-- Add a Photo Button -->
         <label class="file-upload-btn">
             Add a photo
             <input type="file" id="main-image-upload" accept="image/*">
         </label>
 
-        <!-- Color Picker -->
         <div class="color-picker-wrapper">
             <span>Background Color</span>
-            <input type="color" id="bg-color-picker" value="#ffffff">
+            <input type="color" id="bg-color-picker" value="#c9f5d1">
         </div>
 
-        <!-- Save Image Button -->
         <button onclick="saveImage()" style="background: #28a745;">Save the image</button>
-
     </div>
 
-    <!-- 2. MOOD BOARD DISPLAY -->
+    <!-- MOOD BOARD DISPLAY -->
     <div id="capture-area">
         <img id="main-image-display" src="" alt="Atmosphere">
         <div class="board-content">
@@ -234,10 +230,8 @@
         </div>
     </div>
 
-    <!-- 3. DATABASE MANAGEMENT (Tucked away) -->
     <details>
         <summary>Database Settings (Add Notes / Backup)</summary>
-        
         <div class="db-manage-group">
             <strong>Add New Note</strong>
             <label class="file-upload-btn" style="background: #ccc; color: #333;">
@@ -247,7 +241,6 @@
             <input type="text" id="note-name-input" placeholder="Note Title (e.g., Cold Air)">
             <button onclick="saveToIndexedDB()">Save Note to Database</button>
         </div>
-
         <div class="db-manage-group">
             <strong>Backup & Restore</strong>
             <button onclick="exportDatabase()" style="background: #ccc; color: #333;">Export Database Backup</button>
@@ -259,30 +252,23 @@
     </details>
 
     <script>
-        // PWA App Registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
         }
 
-        // --- UI Interactions ---
-
-        // Toggle Library Visibility
         function toggleLibrary() {
             const lib = document.getElementById('library-section');
             lib.style.display = lib.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        // Live Title Update
         function updateTitle() {
             document.getElementById('board-title-display').value = document.getElementById('title-input').value;
         }
 
-        // Change Background Color
         document.getElementById('bg-color-picker').addEventListener('input', (e) => {
             document.getElementById('capture-area').style.backgroundColor = e.target.value;
         });
 
-        // Add Main Atmosphere Photo
         document.getElementById('main-image-upload').addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
@@ -296,38 +282,37 @@
             }
         });
 
-        // Add Note to the actual Mood Board
         function addNoteToBoard(imgSrc, name) {
             const container = document.getElementById('selected-notes-container');
             const boardNote = document.createElement('div');
             boardNote.className = 'board-note';
             boardNote.innerHTML = `<img src="${imgSrc}"><span>${name}</span>`;
             
-            // Tap to remove
+            // Tap to remove from board
             boardNote.onclick = function() { this.remove(); };
             container.appendChild(boardNote);
         }
 
-        // Save Mood Board as Image using html2canvas
         function saveImage() {
             const captureArea = document.getElementById('capture-area');
+            const titleInput = document.getElementById('board-title-display');
             
-            // Clean up UI before snapshot (hide placeholder text if empty)
-            const titleElement = document.getElementById('board-title-display');
-            if(!titleElement.value) titleElement.style.border = 'none';
+            // Remove the placeholder text momentarily if it's empty so it doesn't show in the screenshot
+            const originalPlaceholder = titleInput.placeholder;
+            if(!titleInput.value) { titleInput.placeholder = ""; }
 
             html2canvas(captureArea, {
-                scale: 2, // High resolution
+                scale: 2, 
                 useCORS: true,
-                backgroundColor: null // Transparent so border-radius shows
+                backgroundColor: document.getElementById('bg-color-picker').value 
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = (document.getElementById('title-input').value || 'scent-board') + '.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 
-                // restore border after snapshot
-                titleElement.style.borderBottom = '1px solid #ccc';
+                // Put the placeholder back
+                titleInput.placeholder = originalPlaceholder;
             });
         }
 
@@ -390,7 +375,6 @@
                 const item = document.createElement('div');
                 item.className = 'db-note';
                 item.innerHTML = `<img src="${note.image}" alt="${note.name}">`;
-                // Add to board when tapped from the library
                 item.addEventListener('click', () => addNoteToBoard(note.image, note.name));
                 listContainer.appendChild(item);
             });
@@ -436,4 +420,3 @@
     </script>
 </body>
 </html>
-
