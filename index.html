@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Scent Mood Board</title>
+    <style>
+        :root {
+            --bg-color: #c9f5d1; /* Default pastel green */
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        .controls {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 350px;
+            height: fit-content;
+        }
+        .controls h2, .controls h3 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #333;
+        }
+        .control-group {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        input[type="text"], input[type="file"] {
+            width: 90%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover { background: #555; }
+        
+        /* Database styling */
+        #database-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .db-note {
+            width: 60px;
+            text-align: center;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .db-note img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border: 1px solid #ccc;
+        }
+
+        /* Mood Board Styling */
+        .board-wrapper {
+            flex: 2;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        #capture-area {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        #main-image-display {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            background-color: #ddd;
+            display: none; /* Hidden until uploaded */
+        }
+        .board-content {
+            padding: 20px;
+        }
+        .title-input {
+            width: 95%;
+            font-size: 1.5rem;
+            padding: 10px;
+            border: 1px solid #bbb;
+            margin-bottom: 20px;
+            background: white;
+            color: #333;
+            text-align: left;
+        }
+        
+        /* Selected Notes row styling */
+        #selected-notes-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .board-note {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 80px;
+            border: 1px solid white;
+            padding: 5px;
+            cursor: pointer; /* Click to remove */
+            transition: transform 0.1s;
+        }
+        .board-note:hover {
+            transform: scale(0.95); /* Visual feedback that it can be clicked */
+        }
+        .board-note img {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            margin-bottom: 5px;
+        }
+        .board-note span {
+            font-size: 0.85rem;
+            text-align: center;
+            color: #111;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CONTROL PANEL -->
+    <div class="controls">
+        <h2>Mood Board Controls</h2>
+        
+        <div class="control-group">
+            <h3>1. Board Background Color</h3>
+            <input type="color" id="bg-color-picker" value="#c9f5d1">
+        </div>
+
+        <div class="control-group">
+            <h3>2. Top Atmosphere Image</h3>
+            <input type="file" id="main-image-upload" accept="image/*">
+        </div>
+
+        <div class="control-group">
+            <h3>3. Add to Scent Database</h3>
+            <input type="file" id="note-image-upload" accept="image/*">
+            <input type="text" id="note-name-input" placeholder="Note Name (e.g., Dust)">
+            <button onclick="addToDatabase()">Add Note</button>
+        </div>
+
+        <div class="control-group" style="border: none;">
+            <h3>Your Database</h3>
+            <p style="font-size: 0.8rem; color: #666;">Click a note to add it to the board.</p>
+            <div id="database-list"></div>
+        </div>
+    </div>
+
+    <!-- MOOD BOARD (The part you screenshot) -->
+    <div class="board-wrapper">
+        <div id="capture-area">
+            <img id="main-image-display" src="" alt="Main Atmosphere">
+            <div class="board-content">
+                <input type="text" class="title-input" placeholder="Enter board title here (e.g., breaking apart at the seams)">
+                
+                <div id="selected-notes-container">
+                    <!-- Notes will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Handle Background Color Change
+        const colorPicker = document.getElementById('bg-color-picker');
+        const captureArea = document.getElementById('capture-area');
+        
+        colorPicker.addEventListener('input', (e) => {
+            captureArea.style.backgroundColor = e.target.value;
+        });
+
+        // 2. Handle Main Atmosphere Image Upload
+        const mainImageUpload = document.getElementById('main-image-upload');
+        const mainImageDisplay = document.getElementById('main-image-display');
+
+        mainImageUpload.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    mainImageDisplay.src = e.target.result;
+                    mainImageDisplay.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 3. Handle Scent Database
+        const dbList = document.getElementById('database-list');
+        const boardNotesContainer = document.getElementById('selected-notes-container');
+        
+        function addToDatabase() {
+            const fileInput = document.getElementById('note-image-upload');
+            const nameInput = document.getElementById('note-name-input');
+            const file = fileInput.files[0];
+            const name = nameInput.value;
+
+            if (file && name) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgSrc = e.target.result;
+                    
+                    // Create element for the database list
+                    const dbNote = document.createElement('div');
+                    dbNote.className = 'db-note';
+                    dbNote.innerHTML = `
+                        <img src="${imgSrc}" alt="${name}">
+                        <span>${name}</span>
+                    `;
+                    
+                    // When clicked in database, add it to the mood board
+                    dbNote.onclick = () => addNoteToBoard(imgSrc, name);
+                    
+                    dbList.appendChild(dbNote);
+                    
+                    // Reset inputs
+                    fileInput.value = '';
+                    nameInput.value = '';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                alert('Please provide both an image and a name for the note.');
+            }
+        }
+
+        // 4. Add Note to the Board
+        function addNoteToBoard(imgSrc, name) {
+            const boardNote = document.createElement('div');
+            boardNote.className = 'board-note';
+            boardNote.innerHTML = `
+                <img src="${imgSrc}" alt="${name}">
+                <span>${name}</span>
+            `;
+            
+            // To remove the note without an 'x' button, just click it!
+            boardNote.onclick = function() {
+                this.remove();
+            };
+            
+            boardNotesContainer.appendChild(boardNote);
+        }
+    </script>
+</body>
+</html>
+
