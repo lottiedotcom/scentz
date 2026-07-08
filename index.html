@@ -154,7 +154,6 @@
             border-radius: 2px;
         }
         
-        /* THE FIX: Forced block layout spanning exactly 100% */
         #bottom-section { 
             width: 100%;
             flex: 1; 
@@ -163,13 +162,14 @@
         }
 
         #bottom-content-wrapper {
-            display: block; /* Removed flex entirely here */
+            display: block; 
             width: 100%;
             padding: 15px;
             box-sizing: border-box; 
             transform-origin: top left; 
         }
         
+        /* The title box forced to span the entire wrapper width */
         #board-title-display {
             display: block;
             width: 100%;
@@ -178,7 +178,7 @@
             background-color: white; 
             border: 1px solid #cfcfcf; 
             color: #333;
-            margin: 0 0 15px 0; /* Space below the title */
+            margin: 0 0 15px 0; 
             box-sizing: border-box;
             text-align: left;
             border-radius: 0 !important; 
@@ -312,7 +312,6 @@
             navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
         }
 
-        // --- Draggable Resizer Logic ---
         const resizer = document.getElementById('resizer');
         const topSection = document.getElementById('top-section');
         const captureArea = document.getElementById('capture-area');
@@ -347,7 +346,6 @@
             if (newHeightPercent > 85) newHeightPercent = 85;
             
             topSection.style.height = `${newHeightPercent}%`;
-            
             scaleBottomContent();
         }
 
@@ -357,12 +355,17 @@
             document.removeEventListener('touchmove', handleTouchMove);
         }
 
-        // --- THE "SMUSH" FUNCTION ---
+        // THE FIX: This function now actively counter-stretches the width when it shrinks the height
         function scaleBottomContent() {
             const bottomSection = document.getElementById('bottom-section');
             const wrapper = document.getElementById('bottom-content-wrapper');
 
+            // Reset completely to get an accurate measurement
             wrapper.style.transform = 'scale(1)';
+            wrapper.style.width = '100%';
+
+            // Force browser layout recalculation
+            void wrapper.offsetHeight; 
 
             const availableHeight = bottomSection.clientHeight;
             const contentHeight = wrapper.scrollHeight;
@@ -370,9 +373,11 @@
             if (contentHeight > availableHeight && availableHeight > 0) {
                 const scale = availableHeight / contentHeight;
                 wrapper.style.transform = `scale(${scale})`;
+                
+                // COUNTER-STRETCH: This mathematically pushes the edge back to 100% full width
+                wrapper.style.width = `${100 / scale}%`; 
             }
         }
-
 
         function toggleLibrary() {
             const lib = document.getElementById('library-section');
@@ -442,7 +447,6 @@
                 if(wasResizerVisible) resizerHandle.style.display = 'flex';
             });
         }
-
 
         // --- Database Logic ---
         let db;
