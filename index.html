@@ -111,7 +111,6 @@
 
         /* --- MOOD BOARD STYLING --- */
         #capture-area {
-            --smush-scale: 1; /* The magic scaling multiplier */
             width: 100%;
             max-width: 500px;
             aspect-ratio: 1 / 1; 
@@ -137,6 +136,7 @@
             display: block;
         }
 
+        /* The draggable divider */
         #resizer {
             width: 100%;
             height: 16px;
@@ -148,7 +148,6 @@
             flex-shrink: 0;
             z-index: 10;
         }
-        
         .resizer-handle {
             width: 40px;
             height: 4px;
@@ -156,21 +155,33 @@
             border-radius: 2px;
         }
         
-        /* The dynamically scaled notes area */
+        /* The notes area (Now acts as an overflow hider for the scalable wrapper) */
         #bottom-section { 
-            padding: calc(15px * var(--smush-scale));
             flex: 1; 
             overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* This wrapper treats everything inside like a single scalable photo */
+        #bottom-content-wrapper {
+            width: 100%;
+            padding: 15px;
+            transform-origin: top center; /* Ensures it shrinks toward the resizer handle */
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
         
         #board-title-display {
             width: 100%;
-            font-size: calc(1.5rem * var(--smush-scale));
-            padding: calc(15px * var(--smush-scale));
-            margin-bottom: calc(20px * var(--smush-scale));
+            font-size: 1.5rem;
+            padding: 15px;
             background-color: white; 
             border: 1px solid #cfcfcf; 
             color: #333;
+            margin: 0;
             box-sizing: border-box;
             text-align: left;
             border-radius: 0 !important; 
@@ -179,7 +190,7 @@
         
         #selected-notes-container {
             display: flex;
-            gap: calc(8px * var(--smush-scale)); 
+            gap: 8px; 
             flex-wrap: wrap;
         }
         
@@ -187,23 +198,23 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: calc(82px * var(--smush-scale)); 
-            border: calc(2px * var(--smush-scale)) solid white; 
-            padding: calc(6px * var(--smush-scale));
+            width: 82px; 
+            border: 2px solid white; 
+            padding: 6px;
             cursor: pointer;
             box-sizing: border-box;
         }
         
         .board-note img {
-            width: calc(66px * var(--smush-scale)); 
-            height: calc(66px * var(--smush-scale));
+            width: 66px; 
+            height: 66px;
             object-fit: cover;
             border-radius: 0; 
-            margin-bottom: calc(8px * var(--smush-scale));
+            margin-bottom: 8px;
         }
         
         .board-note span {
-            font-size: calc(0.9rem * var(--smush-scale));
+            font-size: 0.9rem;
             text-align: center;
             color: #111;
             line-height: 1.2;
@@ -211,6 +222,7 @@
             width: 100%;
         }
 
+        /* Database Management Section */
         details {
             width: 100%;
             max-width: 500px;
@@ -267,9 +279,12 @@
             <div class="resizer-handle"></div>
         </div>
 
+        <!-- The scalable area -->
         <div id="bottom-section">
-            <input type="text" id="board-title-display" placeholder="Title will appear here..." readonly>
-            <div id="selected-notes-container"></div>
+            <div id="bottom-content-wrapper">
+                <input type="text" id="board-title-display" placeholder="Title will appear here..." readonly>
+                <div id="selected-notes-container"></div>
+            </div>
         </div>
 
     </div>
@@ -300,7 +315,7 @@
             navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
         }
 
-        // --- Draggable Resizer & Smush Logic ---
+        // --- Draggable Resizer Logic ---
         const resizer = document.getElementById('resizer');
         const topSection = document.getElementById('top-section');
         const captureArea = document.getElementById('capture-area');
@@ -331,19 +346,13 @@
             const containerRect = captureArea.getBoundingClientRect();
             let newHeightPercent = ((clientY - containerRect.top) / containerRect.height) * 100;
             
-            // Constrain limits
-            if (newHeightPercent < 10) newHeightPercent = 10;
-            if (newHeightPercent > 90) newHeightPercent = 90;
+            if (newHeightPercent < 15) newHeightPercent = 15;
+            if (newHeightPercent > 85) newHeightPercent = 85;
             
             topSection.style.height = `${newHeightPercent}%`;
             
-            // Calculate the Smush Scale!
-            // 50% height acts as our standard 1.0 baseline.
-            const bottomPercent = 100 - newHeightPercent;
-            const scale = bottomPercent / 50; 
-            
-            // Update the CSS variable to shrink/grow all fonts, images, and paddings instantly
-            captureArea.style.setProperty('--smush-scale', scale);
+            // Smush the notes section!
+            scaleBottomContent();
         }
 
         function stopResizing() {
@@ -352,7 +361,25 @@
             document.removeEventListener('touchmove', handleTouchMove);
         }
 
-        // --- UI Interactions ---
+        // --- THE "SMUSH" FUNCTION ---
+        // This calculates if the notes are too big for the space, and shrinks them to fit.
+        function scaleBottomContent() {
+            const bottomSection = document.getElementById('bottom-section');
+            const wrapper = document.getElementById('bottom-content-wrapper');
+
+            // Reset the scale to measure the true height
+            wrapper.style.transform = 'scale(1)';
+
+            const availableHeight = bottomSection.clientHeight;
+            const contentHeight = wrapper.scrollHeight;
+
+            if (contentHeight > availableHeight && availableHeight > 0) {
+                // Squeeze it down proportionally
+                const scale = availableHeight / contentHeight;
+                wrapper.style.transform = `scale(${scale})`;
+            }
+        }
+
 
         function toggleLibrary() {
             const lib = document.getElementById('library-section');
@@ -361,6 +388,7 @@
 
         function updateTitle() {
             document.getElementById('board-title-display').value = document.getElementById('title-input').value;
+            scaleBottomContent(); // Re-smush in case the title wrapped to two lines!
         }
 
         document.getElementById('bg-color-picker').addEventListener('input', (e) => {
@@ -377,6 +405,7 @@
                     
                     document.getElementById('top-section').style.display = 'block';
                     document.getElementById('resizer').style.display = 'flex';
+                    scaleBottomContent();
                 };
                 reader.readAsDataURL(file);
             }
@@ -388,8 +417,12 @@
             boardNote.className = 'board-note';
             boardNote.innerHTML = `<img src="${imgSrc}"><span>${name}</span>`;
             
-            boardNote.onclick = function() { this.remove(); };
+            boardNote.onclick = function() { 
+                this.remove(); 
+                scaleBottomContent(); // Re-adjust if a note is deleted
+            };
             container.appendChild(boardNote);
+            scaleBottomContent(); // Squeeze if too many notes are added!
         }
 
         function saveImage() {
