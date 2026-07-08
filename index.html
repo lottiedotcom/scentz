@@ -154,33 +154,31 @@
             border-radius: 2px;
         }
         
-        /* The notes area */
+        /* THE FIX: Forced block layout spanning exactly 100% */
         #bottom-section { 
             width: 100%;
             flex: 1; 
             overflow: hidden; 
-            display: block; /* Removed flex-start constraint so it spans full width */
+            display: block; 
         }
 
-        /* This wrapper treats everything inside like a single scalable photo */
         #bottom-content-wrapper {
+            display: block; /* Removed flex entirely here */
             width: 100%;
             padding: 15px;
-            box-sizing: border-box; /* Forces padding to stay inside the 100% width */
+            box-sizing: border-box; 
             transform-origin: top left; 
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
         }
         
         #board-title-display {
-            width: 100%; /* Spans exactly edge-to-edge of the padding */
+            display: block;
+            width: 100%;
             font-size: 1.5rem;
             padding: 12px 15px;
             background-color: white; 
             border: 1px solid #cfcfcf; 
             color: #333;
-            margin: 0;
+            margin: 0 0 15px 0; /* Space below the title */
             box-sizing: border-box;
             text-align: left;
             border-radius: 0 !important; 
@@ -188,11 +186,11 @@
         }
         
         #selected-notes-container {
-            width: 100%;
             display: flex;
+            width: 100%;
             gap: 8px; 
             flex-wrap: wrap;
-            justify-content: flex-start; /* Aligns notes to the left */
+            justify-content: flex-start;
         }
         
         .board-note {
