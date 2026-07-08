@@ -3,75 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom Scent Mood Board</title>
+    <title>Scent Mood Board Builder</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root {
-            --bg-color: #c9f5d1; /* Default pastel green */
+            --bg-board-default: #ffffff;
+            --app-pink: #ffd1dc; /* Soft pastel pink background */
+            --dark-pink: #ffb6c1;
         }
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--app-pink);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             display: flex;
+            flex-direction: row;
             gap: 20px;
         }
+        
+        /* Control Panel */
         .controls {
             flex: 1;
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 350px;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            max-width: 360px;
             height: fit-content;
         }
-        .controls h2, .controls h3 {
-            margin-top: 0;
-            font-size: 1.2rem;
-            color: #333;
-        }
+        h2, h3 { margin-top: 0; color: #4a4a4a; font-size: 1.1rem;}
         .control-group {
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f0f0;
         }
-        input[type="text"], input[type="file"] {
-            width: 90%;
-            padding: 8px;
+        input[type="text"], input[type="file"], input[type="search"] {
+            width: 100%;
+            padding: 10px;
             margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
         }
         button {
-            padding: 8px 16px;
-            background: #333;
+            width: 100%;
+            padding: 10px;
+            background: #4a4a4a;
             color: white;
             border: none;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 5px;
         }
-        button:hover { background: #555; }
+        button.secondary {
+            background: var(--dark-pink);
+            color: #4a4a4a;
+        }
         
-        /* Database styling */
+        /* Database & Search */
+        .search-box { position: relative; }
         #database-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-top: 5px;
         }
         .db-note {
-            width: 60px;
             text-align: center;
             font-size: 0.7rem;
             cursor: pointer;
+            position: relative;
         }
         .db-note img {
-            width: 60px;
-            height: 60px;
+            width: 100%;
+            aspect-ratio: 1;
             object-fit: cover;
-            border: 1px solid #ccc;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .db-note span {
+            display: block;
+            margin-top: 2px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        /* Tiny delete button just for the database storage management */
+        .delete-db-item {
+            position: absolute;
+            top: 0; right: 0;
+            background: rgba(255,0,0,0.7);
+            color: white;
+            border-radius: 50%;
+            width: 16px; height: 16px;
+            font-size: 10px; line-height: 16px;
+            text-align: center;
         }
 
-        /* Mood Board Styling */
+        /* Mood Board Container */
         .board-wrapper {
             flex: 2;
             display: flex;
@@ -80,188 +115,270 @@
         }
         #capture-area {
             width: 100%;
-            max-width: 600px;
-            background-color: var(--bg-color);
+            max-width: 500px;
+            background-color: var(--bg-board-default);
             display: flex;
             flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         #main-image-display {
             width: 100%;
-            height: 350px;
+            height: 320px;
             object-fit: cover;
-            background-color: #ddd;
-            display: none; /* Hidden until uploaded */
+            background-color: #f7f7f7;
+            display: none;
         }
-        .board-content {
-            padding: 20px;
-        }
+        .board-content { padding: 20px; }
         .title-input {
-            width: 95%;
-            font-size: 1.5rem;
-            padding: 10px;
-            border: 1px solid #bbb;
+            width: 100%;
+            font-size: 1.4rem;
+            padding: 8px 0;
+            border: none;
+            border-bottom: 1px solid #ccc;
             margin-bottom: 20px;
-            background: white;
-            color: #333;
-            text-align: left;
+            background: transparent;
+            color: #222;
+            outline: none;
         }
         
-        /* Selected Notes row styling */
+        /* Board Active Notes Row */
         #selected-notes-container {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
         }
         .board-note {
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 80px;
-            border: 1px solid white;
-            padding: 5px;
-            cursor: pointer; /* Click to remove */
-            transition: transform 0.1s;
-        }
-        .board-note:hover {
-            transform: scale(0.95); /* Visual feedback that it can be clicked */
+            width: 75px;
+            cursor: pointer;
         }
         .board-note img {
             width: 70px;
             height: 70px;
             object-fit: cover;
-            margin-bottom: 5px;
+            border-radius: 4px;
+            margin-bottom: 4px;
         }
         .board-note span {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             text-align: center;
-            color: #111;
-            word-wrap: break-word;
+            color: #333;
+            line-height: 1.1;
+        }
+
+        /* Mobile Optimization Rules */
+        @media (max-width: 768px) {
+            body { flex-direction: column; padding: 10px; }
+            .controls { max-width: 100%; width: 100%; }
+            .board-wrapper { width: 100%; }
+            #database-list { grid-template-columns: repeat(5, 1fr); max-height: 200px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- CONTROL PANEL -->
     <div class="controls">
-        <h2>Mood Board Controls</h2>
+        <h2>Scent Studio Panel</h2>
         
         <div class="control-group">
-            <h3>1. Board Background Color</h3>
-            <input type="color" id="bg-color-picker" value="#c9f5d1">
+            <h3>Canvas Settings</h3>
+            <input type="color" id="bg-color-picker" value="#ffffff" style="width:100%; height:40px; border:none; border-radius:8px;">
+            <input type="file" id="main-image-upload" accept="image/*" style="margin-top:10px;">
         </div>
 
         <div class="control-group">
-            <h3>2. Top Atmosphere Image</h3>
-            <input type="file" id="main-image-upload" accept="image/*">
-        </div>
-
-        <div class="control-group">
-            <h3>3. Add to Scent Database</h3>
+            <h3>Add New Note to Permanent DB</h3>
             <input type="file" id="note-image-upload" accept="image/*">
-            <input type="text" id="note-name-input" placeholder="Note Name (e.g., Dust)">
-            <button onclick="addToDatabase()">Add Note</button>
+            <input type="text" id="note-name-input" placeholder="Note Title (e.g., Cold Air)">
+            <button onclick="saveToIndexedDB()">Save to Library</button>
         </div>
 
-        <div class="control-group" style="border: none;">
-            <h3>Your Database</h3>
-            <p style="font-size: 0.8rem; color: #666;">Click a note to add it to the board.</p>
+        <div class="control-group">
+            <h3>Your Library</h3>
+            <input type="search" id="search-bar" placeholder="🔍 Search library..." oninput="filterDatabase()">
             <div id="database-list"></div>
+        </div>
+
+        <div class="control-group" style="border:none; display:flex; gap:10px;">
+            <button class="secondary" onclick="exportDatabase()">Backup DB</button>
+            <button class="secondary" onclick="triggerImport()">Load Backup</button>
+            <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importDatabase(event)">
         </div>
     </div>
 
-    <!-- MOOD BOARD (The part you screenshot) -->
     <div class="board-wrapper">
         <div id="capture-area">
-            <img id="main-image-display" src="" alt="Main Atmosphere">
+            <img id="main-image-display" src="" alt="Atmosphere">
             <div class="board-content">
-                <input type="text" class="title-input" placeholder="Enter board title here (e.g., breaking apart at the seams)">
-                
-                <div id="selected-notes-container">
-                    <!-- Notes will appear here -->
-                </div>
+                <input type="text" class="title-input" placeholder="Tap to write title...">
+                <div id="selected-notes-container"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // 1. Handle Background Color Change
-        const colorPicker = document.getElementById('bg-color-picker');
-        const captureArea = document.getElementById('capture-area');
-        
-        colorPicker.addEventListener('input', (e) => {
-            captureArea.style.backgroundColor = e.target.value;
+        // PWA App Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
+        }
+
+        let db;
+        let allNotes = [];
+        const request = indexedDB.open("ScentDatabase", 1);
+
+        request.onupgradeneeded = function(e) {
+            db = e.target.result;
+            db.createObjectStore("scents", { keyPath: "id", autoIncrement: true });
+        };
+
+        request.onsuccess = function(e) {
+            db = e.target.result;
+            loadDatabaseView();
+        };
+
+        // UI Listeners
+        document.getElementById('bg-color-picker').addEventListener('input', (e) => {
+            document.getElementById('capture-area').style.backgroundColor = e.target.value;
         });
 
-        // 2. Handle Main Atmosphere Image Upload
-        const mainImageUpload = document.getElementById('main-image-upload');
-        const mainImageDisplay = document.getElementById('main-image-display');
-
-        mainImageUpload.addEventListener('change', function() {
+        document.getElementById('main-image-upload').addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    mainImageDisplay.src = e.target.result;
-                    mainImageDisplay.style.display = 'block';
-                }
+                reader.onload = (e) => {
+                    const img = document.getElementById('main-image-display');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
                 reader.readAsDataURL(file);
             }
         });
 
-        // 3. Handle Scent Database
-        const dbList = document.getElementById('database-list');
-        const boardNotesContainer = document.getElementById('selected-notes-container');
-        
-        function addToDatabase() {
+        // Save Note to local IndexedDB Browser Storage
+        function saveToIndexedDB() {
             const fileInput = document.getElementById('note-image-upload');
             const nameInput = document.getElementById('note-name-input');
             const file = fileInput.files[0];
-            const name = nameInput.value;
+            const name = nameInput.value.trim();
 
-            if (file && name) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imgSrc = e.target.result;
-                    
-                    // Create element for the database list
-                    const dbNote = document.createElement('div');
-                    dbNote.className = 'db-note';
-                    dbNote.innerHTML = `
-                        <img src="${imgSrc}" alt="${name}">
-                        <span>${name}</span>
-                    `;
-                    
-                    // When clicked in database, add it to the mood board
-                    dbNote.onclick = () => addNoteToBoard(imgSrc, name);
-                    
-                    dbList.appendChild(dbNote);
-                    
-                    // Reset inputs
+            if (!file || !name) return alert("Please select an image and enter a name.");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const transaction = db.transaction(["scents"], "readwrite");
+                const store = transaction.objectStore("scents");
+                
+                const newNote = { name: name, image: e.target.result };
+                store.add(newNote);
+
+                transaction.oncomplete = function() {
                     fileInput.value = '';
                     nameInput.value = '';
-                }
-                reader.readAsDataURL(file);
-            } else {
-                alert('Please provide both an image and a name for the note.');
-            }
+                    loadDatabaseView();
+                };
+            };
+            reader.readAsDataURL(file);
         }
 
-        // 4. Add Note to the Board
+        // Fetch & render storage items
+        function loadDatabaseView() {
+            const transaction = db.transaction(["scents"], "readonly");
+            const store = transaction.objectStore("scents");
+            const getAll = store.getAll();
+
+            getAll.onsuccess = function() {
+                allNotes = getAll.result;
+                renderNotesList(allNotes);
+            };
+        }
+
+        function renderNotesList(notesArray) {
+            const listContainer = document.getElementById('database-list');
+            listContainer.innerHTML = '';
+            
+            notesArray.forEach(note => {
+                const item = document.createElement('div');
+                item.className = 'db-note';
+                item.innerHTML = `
+                    <img src="${note.image}" alt="${note.name}">
+                    <span>${note.name}</span>
+                    <div class="delete-db-item" onclick="deleteFromDB(${note.id}, event)">×</div>
+                `;
+                item.addEventListener('click', () => addNoteToBoard(note.image, note.name));
+                listContainer.appendChild(item);
+            });
+        }
+
+        // Live Search Filter Function
+        function filterDatabase() {
+            const query = document.getElementById('search-bar').value.toLowerCase();
+            const filtered = allNotes.filter(note => note.name.toLowerCase().includes(query));
+            renderNotesList(filtered);
+        }
+
+        function deleteFromDB(id, event) {
+            event.stopPropagation(); // Stop from adding to board when deleting
+            if(!confirm("Delete this scent permanently from your library?")) return;
+            const transaction = db.transaction(["scents"], "readwrite");
+            transaction.objectStore("scents").delete(id);
+            transaction.oncomplete = loadDatabaseView;
+        }
+
         function addNoteToBoard(imgSrc, name) {
+            const container = document.getElementById('selected-notes-container');
             const boardNote = document.createElement('div');
             boardNote.className = 'board-note';
-            boardNote.innerHTML = `
-                <img src="${imgSrc}" alt="${name}">
-                <span>${name}</span>
-            `;
+            boardNote.innerHTML = `<img src="${imgSrc}"><span>${name}</span>`;
             
-            // To remove the note without an 'x' button, just click it!
-            boardNote.onclick = function() {
-                this.remove();
+            // Clean board styling: No X's, just tap directly on it to remove!
+            boardNote.onclick = function() { this.remove(); };
+            container.appendChild(boardNote);
+        }
+
+        // Database JSON Exporting
+        function exportDatabase() {
+            if(allNotes.length === 0) return alert("Your database is empty.");
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allNotes));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "scent_database_backup.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function triggerImport() { document.getElementById('import-file').click(); }
+
+        // Database JSON Importing
+        function importDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    const transaction = db.transaction(["scents"], "readwrite");
+                    const store = transaction.objectStore("scents");
+                    
+                    importedData.forEach(item => {
+                        // strip old auto-increment IDs to prevent collisions
+                        delete item.id; 
+                        store.add(item);
+                    });
+                    
+                    transaction.oncomplete = function() {
+                        alert("Database backup imported successfully!");
+                        loadDatabaseView();
+                    };
+                } catch(err) {
+                    alert("Error parsing backup file.");
+                }
             };
-            
-            boardNotesContainer.appendChild(boardNote);
+            reader.readAsText(file);
         }
     </script>
 </body>
