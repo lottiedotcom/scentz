@@ -155,20 +155,20 @@
             border-radius: 2px;
         }
         
-        /* The notes area (Now acts as an overflow hider for the scalable wrapper) */
+        /* The notes area */
         #bottom-section { 
             flex: 1; 
             overflow: hidden; 
             display: flex;
             flex-direction: column;
-            align-items: left;
+            align-items: flex-start; /* FORCES LEFT ALIGNMENT */
         }
 
         /* This wrapper treats everything inside like a single scalable photo */
         #bottom-content-wrapper {
             width: 100%;
             padding: 15px;
-            transform-origin: top center; /* Ensures it shrinks toward the resizer handle */
+            transform-origin: top left; /* PINNED TO TOP LEFT FOR SMUSHING */
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -192,6 +192,7 @@
             display: flex;
             gap: 8px; 
             flex-wrap: wrap;
+            justify-content: flex-start; /* Ensures notes wrap correctly starting from the left */
         }
         
         .board-note {
@@ -268,7 +269,6 @@
         <button onclick="saveImage()" style="background: #28a745;">Save the image</button>
     </div>
 
-    <!-- MOOD BOARD DISPLAY -->
     <div id="capture-area">
         
         <div id="top-section">
@@ -279,7 +279,6 @@
             <div class="resizer-handle"></div>
         </div>
 
-        <!-- The scalable area -->
         <div id="bottom-section">
             <div id="bottom-content-wrapper">
                 <input type="text" id="board-title-display" placeholder="Title will appear here..." readonly>
@@ -351,7 +350,6 @@
             
             topSection.style.height = `${newHeightPercent}%`;
             
-            // Smush the notes section!
             scaleBottomContent();
         }
 
@@ -362,19 +360,16 @@
         }
 
         // --- THE "SMUSH" FUNCTION ---
-        // This calculates if the notes are too big for the space, and shrinks them to fit.
         function scaleBottomContent() {
             const bottomSection = document.getElementById('bottom-section');
             const wrapper = document.getElementById('bottom-content-wrapper');
 
-            // Reset the scale to measure the true height
             wrapper.style.transform = 'scale(1)';
 
             const availableHeight = bottomSection.clientHeight;
             const contentHeight = wrapper.scrollHeight;
 
             if (contentHeight > availableHeight && availableHeight > 0) {
-                // Squeeze it down proportionally
                 const scale = availableHeight / contentHeight;
                 wrapper.style.transform = `scale(${scale})`;
             }
@@ -388,7 +383,7 @@
 
         function updateTitle() {
             document.getElementById('board-title-display').value = document.getElementById('title-input').value;
-            scaleBottomContent(); // Re-smush in case the title wrapped to two lines!
+            scaleBottomContent(); 
         }
 
         document.getElementById('bg-color-picker').addEventListener('input', (e) => {
@@ -419,10 +414,10 @@
             
             boardNote.onclick = function() { 
                 this.remove(); 
-                scaleBottomContent(); // Re-adjust if a note is deleted
+                scaleBottomContent(); 
             };
             container.appendChild(boardNote);
-            scaleBottomContent(); // Squeeze if too many notes are added!
+            scaleBottomContent(); 
         }
 
         function saveImage() {
