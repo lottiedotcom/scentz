@@ -92,14 +92,16 @@
         #database-list {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            max-height: 200px;
+            gap: 12px;
+            max-height: 250px;
             overflow-y: auto;
+            padding: 5px;
         }
         .db-note {
             text-align: center;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             cursor: pointer;
+            position: relative; /* Needed for the delete button */
         }
         .db-note img {
             width: 100%;
@@ -107,6 +109,25 @@
             object-fit: cover;
             border-radius: 6px;
             border: 1px solid #e0e0e0;
+            margin-bottom: 2px;
+        }
+        
+        /* New Delete Button for Library Items */
+        .delete-db-item {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff4d4d;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 14px;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
         }
 
         /* --- MOOD BOARD STYLING --- */
@@ -195,7 +216,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            flex: 1 1 5.5em;
+            flex: 1 1 5.5em; 
             max-width: 7em; 
             min-width: 3.5em;
             border: 0.15em solid white; 
@@ -485,11 +506,24 @@
                 transaction.oncomplete = function() {
                     fileInput.value = '';
                     nameInput.value = '';
-                    alert("Note saved to database!");
                     loadDatabaseView();
                 };
             };
             reader.readAsDataURL(file);
+        }
+
+        // DELETING FROM DB Logic
+        function deleteFromDB(id, event) {
+            event.stopPropagation(); // Stops it from adding to the board when you hit delete
+            if(!confirm("Are you sure you want to permanently delete this note from your library?")) return;
+            
+            const transaction = db.transaction(["scents"], "readwrite");
+            const store = transaction.objectStore("scents");
+            store.delete(id);
+            
+            transaction.oncomplete = function() {
+                loadDatabaseView(); // Refresh the library display
+            };
         }
 
         function loadDatabaseView() {
@@ -510,8 +544,19 @@
             notesArray.forEach(note => {
                 const item = document.createElement('div');
                 item.className = 'db-note';
-                item.innerHTML = `<img src="${note.image}" alt="${note.name}">`;
-                item.addEventListener('click', () => addNoteToBoard(note.image, note.name));
+                
+                // Added a delete button and text label to the library items
+                item.innerHTML = `
+                    <div class="delete-db-item" onclick="deleteFromDB(${note.id}, event)">×</div>
+                    <img src="${note.image}" alt="${note.name}">
+                    <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${note.name}</span>
+                `;
+                
+                item.addEventListener('click', (e) => {
+                    // Only add to board if they didn't click the delete button
+                    if(e.target.className === 'delete-db-item') return;
+                    addNoteToBoard(note.image, note.name);
+                });
                 listContainer.appendChild(item);
             });
         }
@@ -522,7 +567,6 @@
             renderNotesList(filtered);
         }
 
-        // THE FIX: Massive databases now export perfectly using a Blob instead of a raw text link
         function exportDatabase() {
             if(allNotes.length === 0) return alert("Your database is empty.");
             
