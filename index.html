@@ -27,7 +27,6 @@
             gap: 20px;
         }
 
-        /* Top Controls UI */
         .ui-panel {
             width: 100%;
             max-width: 500px;
@@ -140,7 +139,6 @@
             z-index: 10;
         }
 
-        /* --- MOOD BOARD STYLING --- */
         #capture-area {
             width: 100%;
             max-width: 500px;
@@ -200,10 +198,12 @@
         }
         
         #board-title-display {
-            display: block;
+            display: flex;
+            align-items: center;
             width: 100%;
             font-size: 1.5em;
             padding: 0.75em 1em;
+            min-height: 2.8em;
             background-color: white; 
             border: 0.08em solid #cfcfcf; 
             color: #333;
@@ -211,7 +211,8 @@
             box-sizing: border-box;
             text-align: left;
             border-radius: 0 !important; 
-            -webkit-appearance: none; 
+            line-height: 1.2;
+            word-wrap: break-word;
         }
         
         #selected-notes-container {
@@ -253,7 +254,6 @@
             width: 100%;
         }
 
-        /* Database Management Section */
         details {
             width: 100%;
             max-width: 500px;
@@ -299,7 +299,6 @@
         <button onclick="saveImage()" style="background: #28a745;">Save the image</button>
     </div>
 
-    <!-- MOOD BOARD DISPLAY -->
     <div id="capture-area">
         
         <div id="top-section">
@@ -312,7 +311,7 @@
 
         <div id="bottom-section">
             <div id="bottom-content-wrapper">
-                <input type="text" id="board-title-display" placeholder="Title will appear here..." readonly>
+                <div id="board-title-display">Title will appear here...</div>
                 <div id="selected-notes-container"></div>
             </div>
         </div>
@@ -421,7 +420,8 @@
         }
 
         function updateTitle() {
-            document.getElementById('board-title-display').value = document.getElementById('title-input').value;
+            const val = document.getElementById('title-input').value;
+            document.getElementById('board-title-display').innerText = val ? val : "Title will appear here...";
             scaleBottomContent(); 
         }
 
@@ -461,15 +461,17 @@
 
         function saveImage() {
             const captureArea = document.getElementById('capture-area');
-            const titleInput = document.getElementById('board-title-display');
+            const titleDisplay = document.getElementById('board-title-display');
             const resizerHandle = document.getElementById('resizer');
             
-            const originalPlaceholder = titleInput.placeholder;
-            if(!titleInput.value) { titleInput.placeholder = ""; }
+            const originalText = titleDisplay.innerText;
+            if (originalText === "Title will appear here...") {
+                titleDisplay.innerText = "";
+            }
+            
             const wasResizerVisible = resizerHandle.style.display !== 'none';
-            if(wasResizerVisible) resizerHandle.style.display = 'none';
+            if (wasResizerVisible) resizerHandle.style.display = 'none';
 
-            // Explicitly extract exact coordinates to prevent scroll clipping
             const rect = captureArea.getBoundingClientRect();
 
             html2canvas(captureArea, {
@@ -478,19 +480,18 @@
                 backgroundColor: document.getElementById('bg-color-picker').value,
                 width: rect.width,
                 height: rect.height,
-                scrollY: -window.scrollY // Direct fix for mobile scroll cut-off
+                scrollY: -window.scrollY
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = (document.getElementById('title-input').value || 'scent-board') + '.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 
-                titleInput.placeholder = originalPlaceholder;
+                titleDisplay.innerText = originalText;
                 if(wasResizerVisible) resizerHandle.style.display = 'flex';
             });
         }
 
-        // --- Database Logic ---
         let db;
         let allNotes = [];
         const request = indexedDB.open("ScentDatabase", 1);
