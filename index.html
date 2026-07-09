@@ -139,6 +139,7 @@
             border: 1px solid #e0e0e0;
             margin-bottom: 4px;
             display: block;
+            pointer-events: none; /* Prevents bugs when clicking */
         }
         .db-note span {
             font-size: 0.75rem;
@@ -182,7 +183,9 @@
             height: 50%; 
             flex-shrink: 0;
             display: none; 
-            overflow: hidden; /* Critical for cropping */
+            overflow: hidden; 
+            touch-action: none; /* Crucial for swipe-to-pan */
+            position: relative;
         }
 
         #main-image-display {
@@ -190,9 +193,9 @@
             height: 100%; 
             object-fit: cover; 
             display: block;
-            /* Applies the manual photo crop sliders */
             transform: scale(var(--img-scale)) translate(var(--img-x), var(--img-y));
             transform-origin: center center;
+            pointer-events: none; /* Let the container handle the touch events */
         }
 
         #resizer {
@@ -225,7 +228,6 @@
             width: 100%;
             padding: 0.8em;
             box-sizing: border-box; 
-            /* Applies the manual Scent Squish sliders */
             transform: scale(var(--bot-scale)) scaleY(var(--bot-squish));
             transform-origin: top left;
         }
@@ -276,6 +278,7 @@
             border-radius: 0; 
             margin-bottom: 0.5em;
             display: block;
+            pointer-events: none;
         }
         
         .board-note span {
@@ -286,6 +289,7 @@
             line-height: 1.2;
             word-wrap: break-word;
             width: 100%;
+            pointer-events: none;
         }
 
         details {
@@ -318,8 +322,6 @@
             <div id="database-list"></div>
         </div>
 
-        <input type="text" id="title-input" placeholder="Enter your mood board title here" oninput="updateTitle()">
-
         <label class="file-upload-btn">
             Add a photo
             <input type="file" id="main-image-upload" accept="image/*">
@@ -329,7 +331,8 @@
             <summary>📸 Crop & Squish Lab (Fine Tuning)</summary>
             
             <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;">
-                <h4 style="margin: 0 0 10px 0; color: var(--dark-pink);">Top Photo Crop</h4>
+                <h4 style="margin: 0 0 5px 0; color: var(--dark-pink);">Top Photo Crop</h4>
+                <p style="font-size: 0.75rem; color: #666; margin: 0 0 10px 0;">You can also swipe and pinch directly on the photo below!</p>
                 <div class="slider-group">
                     <label>Zoom Photo In/Out</label>
                     <input type="range" id="ctrl-img-zoom" min="0.5" max="3" step="0.05" value="1">
@@ -356,6 +359,8 @@
                 </div>
             </div>
         </details>
+
+        <input type="text" id="title-input" placeholder="Enter your mood board title here" oninput="updateTitle()">
 
         <div class="color-picker-wrapper">
             <span>Background Color</span>
@@ -410,20 +415,102 @@
             navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
         }
 
-        // --- CROP & SQUISH LAB JAVASCRIPT ---
         const root = document.documentElement;
 
-        // Top Photo Controls
-        document.getElementById('ctrl-img-zoom').addEventListener('input', e => root.style.setProperty('--img-scale', e.target.value));
-        document.getElementById('ctrl-img-x').addEventListener('input', e => root.style.setProperty('--img-x', e.target.value + '%'));
-        document.getElementById('ctrl-img-y').addEventListener('input', e => root.style.setProperty('--img-y', e.target.value + '%'));
+        // --- DIRECT TOUCH & PAN JAVASCRIPT FOR PHOTO ---
+        const imgContainer = document.getElementById('top-section');
+        const zoomSlider = document.getElementById('ctrl-img-zoom');
+        const xSlider = document.getElementById('ctrl-img-x');
+        const ySlider = document.getElementById('ctrl-img-y');
+
+        let imgScale = 1;
+        let imgX = 0; 
+        let imgY = 0; 
+
+        function updateImgTransform() {
+            // Constrain values so image doesn't fly off screen
+            imgScale = Math.min(Math.max(imgScale, 0.5), 3);
+            imgX = Math.min(Math.max(imgX, -50), 50);
+            imgY = Math.min(Math.max(imgY, -50), 50);
+
+            root.style.setProperty('--img-scale', imgScale);
+            root.style.setProperty('--img-x', imgX + '%');
+            root.style.setProperty('--img-y', imgY + '%');
+
+            // Keep sliders perfectly synced with touch gestures
+            zoomSlider.value = imgScale;
+            xSlider.value = imgX;
+            ySlider.value = imgY;
+        }
+
+        // Slider listeners
+        zoomSlider.addEventListener('input', e => { imgScale = parseFloat(e.target.value); updateImgTransform(); });
+        xSlider.addEventListener('input', e => { imgX = parseFloat(e.target.value); updateImgTransform(); });
+        ySlider.addEventListener('input', e => { imgY = parseFloat(e.target.value); updateImgTransform(); });
+
+        // Touch Interaction State
+        let touchStartX = 0, touchStartY = 0;
+        let initialPinchDist = null;
+
+        imgContainer.addEventListener('touchstart', e => {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }
+        }, {passive: false});
+
+        imgContainer.addEventListener('touchmove', e => {
+            e.preventDefault(); // Stop page scrolling when interacting with photo
+            
+            if (e.touches.length === 1 && initialPinchDist === null) {
+                // Dragging (Pan)
+                const dx = e.touches[0].clientX - touchStartX;
+                const dy = e.touches[0].clientY - touchStartY;
+                
+                // Convert pixels to slider percentage
+                imgX += (dx / imgContainer.clientWidth) * 100 / imgScale; 
+                imgY += (dy / imgContainer.clientHeight) * 100 / imgScale;
+
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                
+                updateImgTransform();
+                
+            } else if (e.touches.length === 2) {
+                // Pinching (Zoom)
+                const currentDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                
+                if (initialPinchDist) {
+                    const scaleDelta = currentDist / initialPinchDist;
+                    imgScale *= scaleDelta;
+                    initialPinchDist = currentDist; 
+                    updateImgTransform();
+                }
+            }
+        }, {passive: false});
+
+        imgContainer.addEventListener('touchend', e => {
+            if (e.touches.length < 2) initialPinchDist = null;
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        });
+
 
         // Bottom Scent Controls
         document.getElementById('ctrl-bot-zoom').addEventListener('input', e => {
             const scaleVal = e.target.value;
             root.style.setProperty('--bot-scale', scaleVal);
             
-            // This math guarantees the white title box STILL touches the right edge even when zoomed out
             const wrapper = document.getElementById('bottom-content-wrapper');
             wrapper.style.width = `${100 / scaleVal}%`; 
         });
@@ -432,25 +519,24 @@
 
         // --- RESIZER DIVIDER LINE ---
         const resizer = document.getElementById('resizer');
-        const topSection = document.getElementById('top-section');
         const captureArea = document.getElementById('capture-area');
         let isResizing = false;
 
         resizer.addEventListener('mousedown', () => {
             isResizing = true;
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', stopResizing, { once: true });
+            document.addEventListener('mousemove', handleMouseMoveResizer);
+            document.addEventListener('mouseup', stopResizingDivider, { once: true });
         });
 
         resizer.addEventListener('touchstart', (e) => {
             isResizing = true;
-            document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            document.addEventListener('touchend', stopResizing, { once: true });
+            document.addEventListener('touchmove', handleTouchMoveResizer, { passive: false });
+            document.addEventListener('touchend', stopResizingDivider, { once: true });
         });
 
-        function handleMouseMove(e) { if (isResizing) adjustHeight(e.clientY); }
+        function handleMouseMoveResizer(e) { if (isResizing) adjustHeight(e.clientY); }
         
-        function handleTouchMove(e) {
+        function handleTouchMoveResizer(e) {
             if (isResizing) {
                 e.preventDefault(); 
                 adjustHeight(e.touches[0].clientY);
@@ -464,14 +550,13 @@
             if (newHeightPercent < 15) newHeightPercent = 15;
             if (newHeightPercent > 85) newHeightPercent = 85;
             
-            topSection.style.height = `${newHeightPercent}%`;
-            // NOTE: Auto-smush removed entirely! You control it with sliders now.
+            imgContainer.style.height = `${newHeightPercent}%`;
         }
 
-        function stopResizing() {
+        function stopResizingDivider() {
             isResizing = false;
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('mousemove', handleMouseMoveResizer);
+            document.removeEventListener('touchmove', handleTouchMoveResizer);
         }
 
         // --- GENERAL UI ---
@@ -515,17 +600,15 @@
         }
 
         function saveImage() {
-            const captureArea = document.getElementById('capture-area');
             const titleDisplay = document.getElementById('board-title-display');
-            const resizerHandle = document.getElementById('resizer');
             
             const originalText = titleDisplay.innerText;
             if (originalText === "Title will appear here...") {
                 titleDisplay.innerText = "";
             }
             
-            const wasResizerVisible = resizerHandle.style.display !== 'none';
-            if (wasResizerVisible) resizerHandle.style.display = 'none';
+            const wasResizerVisible = resizer.style.display !== 'none';
+            if (wasResizerVisible) resizer.style.display = 'none';
 
             const rect = captureArea.getBoundingClientRect();
 
@@ -543,7 +626,7 @@
                 link.click();
                 
                 titleDisplay.innerText = originalText;
-                if(wasResizerVisible) resizerHandle.style.display = 'flex';
+                if(wasResizerVisible) resizer.style.display = 'flex';
             });
         }
 
@@ -677,3 +760,4 @@
     </script>
 </body>
 </html>
+
