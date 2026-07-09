@@ -14,6 +14,13 @@
             --app-pink: #ffd1dc;
             --dark-pink: #ffb6c1;
             --button-grey: #4a4a4a;
+            
+            /* Manual Control Variables */
+            --img-scale: 1;
+            --img-x: 0%;
+            --img-y: 0%;
+            --bot-scale: 1;
+            --bot-squish: 1;
         }
         * { box-sizing: border-box; }
         body {
@@ -78,6 +85,23 @@
             border: none;
             background: none;
             cursor: pointer;
+        }
+
+        /* SLIDER STYLES */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 8px;
+        }
+        .slider-group label {
+            font-size: 0.8rem;
+            color: #555;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0 10px 0;
         }
 
         #library-section {
@@ -158,6 +182,7 @@
             height: 50%; 
             flex-shrink: 0;
             display: none; 
+            overflow: hidden; /* Critical for cropping */
         }
 
         #main-image-display {
@@ -165,6 +190,9 @@
             height: 100%; 
             object-fit: cover; 
             display: block;
+            /* Applies the manual photo crop sliders */
+            transform: scale(var(--img-scale)) translate(var(--img-x), var(--img-y));
+            transform-origin: center center;
         }
 
         #resizer {
@@ -192,19 +220,21 @@
             display: block; 
         }
 
-        /* BUMPED UP BASELINE PROPORTIONS FOR BETTER SCALING */
         #bottom-content-wrapper {
             display: block; 
             width: 100%;
-            padding: 0.8em; /* Slightly less padding so notes have more room */
+            padding: 0.8em;
             box-sizing: border-box; 
+            /* Applies the manual Scent Squish sliders */
+            transform: scale(var(--bot-scale)) scaleY(var(--bot-squish));
+            transform-origin: top left;
         }
         
         #board-title-display {
             display: flex;
             align-items: center;
             width: 100%;
-            font-size: 1.7em; /* BUMPED UP from 1.5em */
+            font-size: 1.7em; 
             padding: 0.75em 1em;
             min-height: 2.8em;
             background-color: white; 
@@ -221,7 +251,7 @@
         #selected-notes-container {
             display: flex;
             width: 100%;
-            gap: 0.5em; /* Tighter gap so notes can be bigger */
+            gap: 0.5em; 
             flex-wrap: wrap;
             justify-content: flex-start;
         }
@@ -230,9 +260,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            flex: 1 1 6.5em; /* BUMPED UP from 5.5em */
-            max-width: 8.5em; /* BUMPED UP from 7em */
-            min-width: 4.5em; /* BUMPED UP from 3.5em */
+            flex: 1 1 6.5em; 
+            max-width: 8.5em; 
+            min-width: 4.5em;
             border: 0.15em solid white; 
             padding: 0.4em;
             cursor: pointer;
@@ -249,8 +279,8 @@
         }
         
         .board-note span {
-            font-size: 1.1em; /* BUMPED UP from 0.9em */
-            font-weight: 500; /* Added slight boldness for tiny-scale readability */
+            font-size: 1.1em; 
+            font-weight: 500; 
             text-align: center;
             color: #111;
             line-height: 1.2;
@@ -258,7 +288,6 @@
             width: 100%;
         }
 
-        /* Database Management Section */
         details {
             width: 100%;
             max-width: 500px;
@@ -295,13 +324,45 @@
             Add a photo
             <input type="file" id="main-image-upload" accept="image/*">
         </label>
+        
+        <details>
+            <summary>📸 Crop & Squish Lab (Fine Tuning)</summary>
+            
+            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;">
+                <h4 style="margin: 0 0 10px 0; color: var(--dark-pink);">Top Photo Crop</h4>
+                <div class="slider-group">
+                    <label>Zoom Photo In/Out</label>
+                    <input type="range" id="ctrl-img-zoom" min="0.5" max="3" step="0.05" value="1">
+                </div>
+                <div class="slider-group">
+                    <label>Pan Left / Right</label>
+                    <input type="range" id="ctrl-img-x" min="-50" max="50" step="1" value="0">
+                </div>
+                <div class="slider-group">
+                    <label>Pan Up / Down</label>
+                    <input type="range" id="ctrl-img-y" min="-50" max="50" step="1" value="0">
+                </div>
+            </div>
+
+            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                <h4 style="margin: 0 0 10px 0; color: var(--dark-pink);">Bottom Scent Squish</h4>
+                <div class="slider-group">
+                    <label>Overall Scent Size</label>
+                    <input type="range" id="ctrl-bot-zoom" min="0.4" max="2" step="0.05" value="1">
+                </div>
+                <div class="slider-group">
+                    <label>Squish Height (Perspective)</label>
+                    <input type="range" id="ctrl-bot-squish" min="0.4" max="1.5" step="0.05" value="1">
+                </div>
+            </div>
+        </details>
 
         <div class="color-picker-wrapper">
             <span>Background Color</span>
             <input type="color" id="bg-color-picker" value="#c9f5d1">
         </div>
 
-        <button onclick="saveImage()" style="background: #28a745;">Save the image</button>
+        <button onclick="saveImage()" style="background: #28a745; font-size: 1.1rem; padding: 15px;">Save the image</button>
     </div>
 
     <div id="capture-area">
@@ -349,6 +410,27 @@
             navigator.serviceWorker.register('sw.js').catch(err => console.log("SW error", err));
         }
 
+        // --- CROP & SQUISH LAB JAVASCRIPT ---
+        const root = document.documentElement;
+
+        // Top Photo Controls
+        document.getElementById('ctrl-img-zoom').addEventListener('input', e => root.style.setProperty('--img-scale', e.target.value));
+        document.getElementById('ctrl-img-x').addEventListener('input', e => root.style.setProperty('--img-x', e.target.value + '%'));
+        document.getElementById('ctrl-img-y').addEventListener('input', e => root.style.setProperty('--img-y', e.target.value + '%'));
+
+        // Bottom Scent Controls
+        document.getElementById('ctrl-bot-zoom').addEventListener('input', e => {
+            const scaleVal = e.target.value;
+            root.style.setProperty('--bot-scale', scaleVal);
+            
+            // This math guarantees the white title box STILL touches the right edge even when zoomed out
+            const wrapper = document.getElementById('bottom-content-wrapper');
+            wrapper.style.width = `${100 / scaleVal}%`; 
+        });
+        document.getElementById('ctrl-bot-squish').addEventListener('input', e => root.style.setProperty('--bot-squish', e.target.value));
+
+
+        // --- RESIZER DIVIDER LINE ---
         const resizer = document.getElementById('resizer');
         const topSection = document.getElementById('top-section');
         const captureArea = document.getElementById('capture-area');
@@ -383,7 +465,7 @@
             if (newHeightPercent > 85) newHeightPercent = 85;
             
             topSection.style.height = `${newHeightPercent}%`;
-            scaleBottomContent();
+            // NOTE: Auto-smush removed entirely! You control it with sliders now.
         }
 
         function stopResizing() {
@@ -392,33 +474,7 @@
             document.removeEventListener('touchmove', handleTouchMove);
         }
 
-        function scaleBottomContent() {
-            const bottomSection = document.getElementById('bottom-section');
-            const wrapper = document.getElementById('bottom-content-wrapper');
-
-            if (bottomSection.clientHeight === 0) return;
-
-            let currentFontSize = parseFloat(wrapper.style.fontSize) || 16;
-            const availableHeight = bottomSection.clientHeight;
-            let iter = 0;
-
-            if (wrapper.scrollHeight < availableHeight) {
-                while (wrapper.scrollHeight <= availableHeight && currentFontSize < 60 && iter < 50) {
-                    currentFontSize += 0.5;
-                    wrapper.style.fontSize = `${currentFontSize}px`;
-                    iter++;
-                }
-                wrapper.style.fontSize = `${currentFontSize - 0.5}px`; 
-            } 
-            else if (wrapper.scrollHeight > availableHeight) {
-                while (wrapper.scrollHeight > availableHeight && currentFontSize > 5 && iter < 50) {
-                    currentFontSize -= 0.5;
-                    wrapper.style.fontSize = `${currentFontSize}px`;
-                    iter++;
-                }
-            }
-        }
-
+        // --- GENERAL UI ---
         function toggleLibrary() {
             const lib = document.getElementById('library-section');
             lib.style.display = lib.style.display === 'flex' ? 'none' : 'flex';
@@ -427,7 +483,6 @@
         function updateTitle() {
             const val = document.getElementById('title-input').value;
             document.getElementById('board-title-display').innerText = val ? val : "Title will appear here...";
-            scaleBottomContent(); 
         }
 
         document.getElementById('bg-color-picker').addEventListener('input', (e) => {
@@ -444,7 +499,6 @@
                     
                     document.getElementById('top-section').style.display = 'block';
                     document.getElementById('resizer').style.display = 'flex';
-                    scaleBottomContent();
                 };
                 reader.readAsDataURL(file);
             }
@@ -456,12 +510,8 @@
             boardNote.className = 'board-note';
             boardNote.innerHTML = `<img src="${imgSrc}"><span>${name}</span>`;
             
-            boardNote.onclick = function() { 
-                this.remove(); 
-                scaleBottomContent(); 
-            };
+            boardNote.onclick = function() { this.remove(); };
             container.appendChild(boardNote);
-            scaleBottomContent(); 
         }
 
         function saveImage() {
@@ -627,4 +677,3 @@
     </script>
 </body>
 </html>
-
