@@ -154,6 +154,7 @@
             border-radius: 2px;
         }
         
+        /* THE MAGIC: Block layout, and everything inside uses EM units to scale perfectly */
         #bottom-section { 
             width: 100%;
             flex: 1; 
@@ -164,21 +165,19 @@
         #bottom-content-wrapper {
             display: block; 
             width: 100%;
-            padding: 15px;
+            padding: 1em;
             box-sizing: border-box; 
-            transform-origin: top left; 
         }
         
-        /* The title box forced to span the entire wrapper width */
         #board-title-display {
             display: block;
             width: 100%;
-            font-size: 1.5rem;
-            padding: 12px 15px;
+            font-size: 1.5em;
+            padding: 0.75em 1em;
             background-color: white; 
-            border: 1px solid #cfcfcf; 
+            border: 0.08em solid #cfcfcf; 
             color: #333;
-            margin: 0 0 15px 0; 
+            margin: 0 0 1em 0; 
             box-sizing: border-box;
             text-align: left;
             border-radius: 0 !important; 
@@ -188,32 +187,35 @@
         #selected-notes-container {
             display: flex;
             width: 100%;
-            gap: 8px; 
+            gap: 0.6em; 
             flex-wrap: wrap;
-            justify-content: flex-start;
+            justify-content: flex-start; /* Fixed strictly to the left */
         }
         
         .board-note {
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 82px; 
-            border: 2px solid white; 
-            padding: 6px;
+            flex: 1 1 5.5em; /* Allows the notes to stretch and scale nicely */
+            max-width: 7em; 
+            min-width: 3.5em;
+            border: 0.15em solid white; 
+            padding: 0.4em;
             cursor: pointer;
             box-sizing: border-box;
         }
         
         .board-note img {
-            width: 66px; 
-            height: 66px;
+            width: 100%; 
+            aspect-ratio: 1 / 1;
             object-fit: cover;
             border-radius: 0; 
-            margin-bottom: 8px;
+            margin-bottom: 0.5em;
+            display: block;
         }
         
         .board-note span {
-            font-size: 0.9rem;
+            font-size: 0.9em;
             text-align: center;
             color: #111;
             line-height: 1.2;
@@ -355,27 +357,34 @@
             document.removeEventListener('touchmove', handleTouchMove);
         }
 
-        // THE FIX: This function now actively counter-stretches the width when it shrinks the height
+        // --- NEW SMUSH: Font-Size based Dynamic Scaling ---
         function scaleBottomContent() {
             const bottomSection = document.getElementById('bottom-section');
             const wrapper = document.getElementById('bottom-content-wrapper');
 
-            // Reset completely to get an accurate measurement
-            wrapper.style.transform = 'scale(1)';
-            wrapper.style.width = '100%';
+            if (bottomSection.clientHeight === 0) return;
 
-            // Force browser layout recalculation
-            void wrapper.offsetHeight; 
-
+            // Start from the current font size, or default to 16
+            let currentFontSize = parseFloat(wrapper.style.fontSize) || 16;
             const availableHeight = bottomSection.clientHeight;
-            const contentHeight = wrapper.scrollHeight;
+            let iter = 0;
 
-            if (contentHeight > availableHeight && availableHeight > 0) {
-                const scale = availableHeight / contentHeight;
-                wrapper.style.transform = `scale(${scale})`;
-                
-                // COUNTER-STRETCH: This mathematically pushes the edge back to 100% full width
-                wrapper.style.width = `${100 / scale}%`; 
+            // Grow if there is extra space
+            if (wrapper.scrollHeight < availableHeight) {
+                while (wrapper.scrollHeight <= availableHeight && currentFontSize < 60 && iter < 50) {
+                    currentFontSize += 0.5;
+                    wrapper.style.fontSize = `${currentFontSize}px`;
+                    iter++;
+                }
+                wrapper.style.fontSize = `${currentFontSize - 0.5}px`; // Step back to prevent clipping
+            } 
+            // Shrink if there is overflow
+            else if (wrapper.scrollHeight > availableHeight) {
+                while (wrapper.scrollHeight > availableHeight && currentFontSize > 5 && iter < 50) {
+                    currentFontSize -= 0.5;
+                    wrapper.style.fontSize = `${currentFontSize}px`;
+                    iter++;
+                }
             }
         }
 
@@ -447,6 +456,7 @@
                 if(wasResizerVisible) resizerHandle.style.display = 'flex';
             });
         }
+
 
         // --- Database Logic ---
         let db;
