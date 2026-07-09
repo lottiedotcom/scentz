@@ -27,6 +27,7 @@
             gap: 20px;
         }
 
+        /* Top Controls UI */
         .ui-panel {
             width: 100%;
             max-width: 500px;
@@ -139,6 +140,7 @@
             z-index: 10;
         }
 
+        /* --- MOOD BOARD STYLING --- */
         #capture-area {
             width: 100%;
             max-width: 500px;
@@ -190,10 +192,11 @@
             display: block; 
         }
 
+        /* BUMPED UP BASELINE PROPORTIONS FOR BETTER SCALING */
         #bottom-content-wrapper {
             display: block; 
             width: 100%;
-            padding: 1em;
+            padding: 0.8em; /* Slightly less padding so notes have more room */
             box-sizing: border-box; 
         }
         
@@ -201,13 +204,13 @@
             display: flex;
             align-items: center;
             width: 100%;
-            font-size: 1.5em;
+            font-size: 1.7em; /* BUMPED UP from 1.5em */
             padding: 0.75em 1em;
             min-height: 2.8em;
             background-color: white; 
             border: 0.08em solid #cfcfcf; 
             color: #333;
-            margin: 0 0 1em 0; 
+            margin: 0 0 0.8em 0; 
             box-sizing: border-box;
             text-align: left;
             border-radius: 0 !important; 
@@ -218,7 +221,7 @@
         #selected-notes-container {
             display: flex;
             width: 100%;
-            gap: 0.6em; 
+            gap: 0.5em; /* Tighter gap so notes can be bigger */
             flex-wrap: wrap;
             justify-content: flex-start;
         }
@@ -227,9 +230,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            flex: 1 1 5.5em; 
-            max-width: 7em; 
-            min-width: 3.5em;
+            flex: 1 1 6.5em; /* BUMPED UP from 5.5em */
+            max-width: 8.5em; /* BUMPED UP from 7em */
+            min-width: 4.5em; /* BUMPED UP from 3.5em */
             border: 0.15em solid white; 
             padding: 0.4em;
             cursor: pointer;
@@ -246,7 +249,8 @@
         }
         
         .board-note span {
-            font-size: 0.9em;
+            font-size: 1.1em; /* BUMPED UP from 0.9em */
+            font-weight: 500; /* Added slight boldness for tiny-scale readability */
             text-align: center;
             color: #111;
             line-height: 1.2;
@@ -254,6 +258,7 @@
             width: 100%;
         }
 
+        /* Database Management Section */
         details {
             width: 100%;
             max-width: 500px;
@@ -492,6 +497,7 @@
             });
         }
 
+        // --- Database Logic ---
         let db;
         let allNotes = [];
         const request = indexedDB.open("ScentDatabase", 1);
