@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scent Mood Board 🌀</title>
+    <title>Scent Mood Board Builder</title>
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -101,7 +101,7 @@
             text-align: center;
             font-size: 0.75rem;
             cursor: pointer;
-            position: relative; /* Needed for the delete button */
+            position: relative; 
         }
         .db-note img {
             width: 100%;
@@ -112,13 +112,13 @@
             margin-bottom: 2px;
         }
         
-        /* New Delete Button for Library Items */
+        /* New Clear Translucent Delete Button */
         .delete-db-item {
             position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #ff4d4d;
-            color: white;
+            top: 2px;
+            right: 2px;
+            background: rgba(255, 255, 255, 0.65); 
+            color: #333;
             border-radius: 50%;
             width: 20px;
             height: 20px;
@@ -126,7 +126,7 @@
             line-height: 18px;
             text-align: center;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 1px solid rgba(0,0,0,0.15);
             z-index: 10;
         }
 
@@ -473,7 +473,6 @@
             });
         }
 
-
         // --- Database Logic ---
         let db;
         let allNotes = [];
@@ -512,17 +511,17 @@
             reader.readAsDataURL(file);
         }
 
-        // DELETING FROM DB Logic
         function deleteFromDB(id, event) {
-            event.stopPropagation(); // Stops it from adding to the board when you hit delete
-            if(!confirm("Are you sure you want to permanently delete this note from your library?")) return;
+            event.stopPropagation(); 
+            // Updated exact pop-up wording
+            if(!confirm("Are you sure you wanna delete this?")) return;
             
             const transaction = db.transaction(["scents"], "readwrite");
             const store = transaction.objectStore("scents");
             store.delete(id);
             
             transaction.oncomplete = function() {
-                loadDatabaseView(); // Refresh the library display
+                loadDatabaseView(); 
             };
         }
 
@@ -545,7 +544,6 @@
                 const item = document.createElement('div');
                 item.className = 'db-note';
                 
-                // Added a delete button and text label to the library items
                 item.innerHTML = `
                     <div class="delete-db-item" onclick="deleteFromDB(${note.id}, event)">×</div>
                     <img src="${note.image}" alt="${note.name}">
@@ -553,7 +551,6 @@
                 `;
                 
                 item.addEventListener('click', (e) => {
-                    // Only add to board if they didn't click the delete button
                     if(e.target.className === 'delete-db-item') return;
                     addNoteToBoard(note.image, note.name);
                 });
