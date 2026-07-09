@@ -80,7 +80,6 @@
             cursor: pointer;
         }
 
-        /* --- THE LIBRARY FIX: Flex layout with strict locked widths --- */
         #library-section {
             display: none; 
             flex-direction: column;
@@ -100,7 +99,7 @@
             justify-content: flex-start;
         }
         .db-note {
-            width: 65px; /* Locked strict width */
+            width: 65px; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -109,7 +108,7 @@
             position: relative; 
         }
         .db-note img {
-            width: 65px; /* Locked image size */
+            width: 65px; 
             height: 65px;
             object-fit: cover;
             border-radius: 6px;
@@ -120,7 +119,7 @@
         .db-note span {
             font-size: 0.75rem;
             line-height: 1.1;
-            word-wrap: break-word; /* Allows long names to safely wrap to a new line */
+            word-wrap: break-word; 
             width: 100%;
         }
         
@@ -470,10 +469,16 @@
             const wasResizerVisible = resizerHandle.style.display !== 'none';
             if(wasResizerVisible) resizerHandle.style.display = 'none';
 
+            // Explicitly extract exact coordinates to prevent scroll clipping
+            const rect = captureArea.getBoundingClientRect();
+
             html2canvas(captureArea, {
                 scale: 2, 
                 useCORS: true,
-                backgroundColor: document.getElementById('bg-color-picker').value 
+                backgroundColor: document.getElementById('bg-color-picker').value,
+                width: rect.width,
+                height: rect.height,
+                scrollY: -window.scrollY // Direct fix for mobile scroll cut-off
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = (document.getElementById('title-input').value || 'scent-board') + '.png';
@@ -555,7 +560,6 @@
                 const item = document.createElement('div');
                 item.className = 'db-note';
                 
-                // Unrestricted span so it allows word wrapping freely without stretching the box
                 item.innerHTML = `
                     <div class="delete-db-item" onclick="deleteFromDB(${note.id}, event)">×</div>
                     <img src="${note.image}" alt="${note.name}">
