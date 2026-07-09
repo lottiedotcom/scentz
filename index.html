@@ -154,7 +154,6 @@
             border-radius: 2px;
         }
         
-        /* THE MAGIC: Block layout, and everything inside uses EM units to scale perfectly */
         #bottom-section { 
             width: 100%;
             flex: 1; 
@@ -189,14 +188,14 @@
             width: 100%;
             gap: 0.6em; 
             flex-wrap: wrap;
-            justify-content: flex-start; /* Fixed strictly to the left */
+            justify-content: flex-start;
         }
         
         .board-note {
             display: flex;
             flex-direction: column;
             align-items: center;
-            flex: 1 1 5.5em; /* Allows the notes to stretch and scale nicely */
+            flex: 1 1 5.5em;
             max-width: 7em; 
             min-width: 3.5em;
             border: 0.15em solid white; 
@@ -357,28 +356,24 @@
             document.removeEventListener('touchmove', handleTouchMove);
         }
 
-        // --- NEW SMUSH: Font-Size based Dynamic Scaling ---
         function scaleBottomContent() {
             const bottomSection = document.getElementById('bottom-section');
             const wrapper = document.getElementById('bottom-content-wrapper');
 
             if (bottomSection.clientHeight === 0) return;
 
-            // Start from the current font size, or default to 16
             let currentFontSize = parseFloat(wrapper.style.fontSize) || 16;
             const availableHeight = bottomSection.clientHeight;
             let iter = 0;
 
-            // Grow if there is extra space
             if (wrapper.scrollHeight < availableHeight) {
                 while (wrapper.scrollHeight <= availableHeight && currentFontSize < 60 && iter < 50) {
                     currentFontSize += 0.5;
                     wrapper.style.fontSize = `${currentFontSize}px`;
                     iter++;
                 }
-                wrapper.style.fontSize = `${currentFontSize - 0.5}px`; // Step back to prevent clipping
+                wrapper.style.fontSize = `${currentFontSize - 0.5}px`; 
             } 
-            // Shrink if there is overflow
             else if (wrapper.scrollHeight > availableHeight) {
                 while (wrapper.scrollHeight > availableHeight && currentFontSize > 5 && iter < 50) {
                     currentFontSize -= 0.5;
@@ -527,15 +522,22 @@
             renderNotesList(filtered);
         }
 
+        // THE FIX: Massive databases now export perfectly using a Blob instead of a raw text link
         function exportDatabase() {
             if(allNotes.length === 0) return alert("Your database is empty.");
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allNotes));
+            
+            const jsonData = JSON.stringify(allNotes);
+            const blob = new Blob([jsonData], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
             const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("href", url);
             downloadAnchor.setAttribute("download", "scent_database_backup.json");
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
-            downloadAnchor.remove();
+            
+            document.body.removeChild(downloadAnchor);
+            URL.revokeObjectURL(url);
         }
 
         function importDatabase(event) {
