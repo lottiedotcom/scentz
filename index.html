@@ -139,7 +139,7 @@
             border: 1px solid #e0e0e0;
             margin-bottom: 4px;
             display: block;
-            pointer-events: none; /* Prevents bugs when clicking */
+            pointer-events: none;
         }
         .db-note span {
             font-size: 0.75rem;
@@ -184,7 +184,7 @@
             flex-shrink: 0;
             display: none; 
             overflow: hidden; 
-            touch-action: none; /* Crucial for swipe-to-pan */
+            touch-action: none; 
             position: relative;
         }
 
@@ -195,7 +195,7 @@
             display: block;
             transform: scale(var(--img-scale)) translate(var(--img-x), var(--img-y));
             transform-origin: center center;
-            pointer-events: none; /* Let the container handle the touch events */
+            pointer-events: none; 
         }
 
         #resizer {
@@ -322,45 +322,12 @@
             <div id="database-list"></div>
         </div>
 
+        <input type="text" id="title-input" placeholder="Enter your mood board title here" oninput="updateTitle()">
+
         <label class="file-upload-btn">
             Add a photo
             <input type="file" id="main-image-upload" accept="image/*">
         </label>
-        
-        <details>
-            <summary>📸 Crop & Squish Lab (Fine Tuning)</summary>
-            
-            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;">
-                <h4 style="margin: 0 0 5px 0; color: var(--dark-pink);">Top Photo Crop</h4>
-                <p style="font-size: 0.75rem; color: #666; margin: 0 0 10px 0;">You can also swipe and pinch directly on the photo below!</p>
-                <div class="slider-group">
-                    <label>Zoom Photo In/Out</label>
-                    <input type="range" id="ctrl-img-zoom" min="0.5" max="3" step="0.05" value="1">
-                </div>
-                <div class="slider-group">
-                    <label>Pan Left / Right</label>
-                    <input type="range" id="ctrl-img-x" min="-50" max="50" step="1" value="0">
-                </div>
-                <div class="slider-group">
-                    <label>Pan Up / Down</label>
-                    <input type="range" id="ctrl-img-y" min="-50" max="50" step="1" value="0">
-                </div>
-            </div>
-
-            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                <h4 style="margin: 0 0 10px 0; color: var(--dark-pink);">Bottom Scent Squish</h4>
-                <div class="slider-group">
-                    <label>Overall Scent Size</label>
-                    <input type="range" id="ctrl-bot-zoom" min="0.4" max="2" step="0.05" value="1">
-                </div>
-                <div class="slider-group">
-                    <label>Squish Height (Perspective)</label>
-                    <input type="range" id="ctrl-bot-squish" min="0.4" max="1.5" step="0.05" value="1">
-                </div>
-            </div>
-        </details>
-
-        <input type="text" id="title-input" placeholder="Enter your mood board title here" oninput="updateTitle()">
 
         <div class="color-picker-wrapper">
             <span>Background Color</span>
@@ -370,6 +337,7 @@
         <button onclick="saveImage()" style="background: #28a745; font-size: 1.1rem; padding: 15px;">Save the image</button>
     </div>
 
+    <!-- MOOD BOARD DISPLAY -->
     <div id="capture-area">
         
         <div id="top-section">
@@ -387,6 +355,19 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- NEW CONTROLS PANEL DIRECTLY UNDER THE IMAGE -->
+    <div class="ui-panel" style="margin-top: 0;">
+        <h4 style="margin: 0 0 10px 0; color: var(--dark-pink);">Notes & Scent Adjustments</h4>
+        <div class="slider-group">
+            <label>Overall Scent Size</label>
+            <input type="range" id="ctrl-bot-zoom" min="0.4" max="2" step="0.05" value="1">
+        </div>
+        <div class="slider-group">
+            <label>Squish Height (Perspective)</label>
+            <input type="range" id="ctrl-bot-squish" min="0.4" max="1.5" step="0.05" value="1">
+        </div>
     </div>
 
     <details>
@@ -417,18 +398,14 @@
 
         const root = document.documentElement;
 
-        // --- DIRECT TOUCH & PAN JAVASCRIPT FOR PHOTO ---
+        // --- DIRECT TOUCH & PAN JAVASCRIPT FOR PHOTO (SLIDERS REMOVED) ---
         const imgContainer = document.getElementById('top-section');
-        const zoomSlider = document.getElementById('ctrl-img-zoom');
-        const xSlider = document.getElementById('ctrl-img-x');
-        const ySlider = document.getElementById('ctrl-img-y');
 
         let imgScale = 1;
         let imgX = 0; 
         let imgY = 0; 
 
         function updateImgTransform() {
-            // Constrain values so image doesn't fly off screen
             imgScale = Math.min(Math.max(imgScale, 0.5), 3);
             imgX = Math.min(Math.max(imgX, -50), 50);
             imgY = Math.min(Math.max(imgY, -50), 50);
@@ -436,17 +413,7 @@
             root.style.setProperty('--img-scale', imgScale);
             root.style.setProperty('--img-x', imgX + '%');
             root.style.setProperty('--img-y', imgY + '%');
-
-            // Keep sliders perfectly synced with touch gestures
-            zoomSlider.value = imgScale;
-            xSlider.value = imgX;
-            ySlider.value = imgY;
         }
-
-        // Slider listeners
-        zoomSlider.addEventListener('input', e => { imgScale = parseFloat(e.target.value); updateImgTransform(); });
-        xSlider.addEventListener('input', e => { imgX = parseFloat(e.target.value); updateImgTransform(); });
-        ySlider.addEventListener('input', e => { imgY = parseFloat(e.target.value); updateImgTransform(); });
 
         // Touch Interaction State
         let touchStartX = 0, touchStartY = 0;
@@ -465,14 +432,12 @@
         }, {passive: false});
 
         imgContainer.addEventListener('touchmove', e => {
-            e.preventDefault(); // Stop page scrolling when interacting with photo
+            e.preventDefault(); 
             
             if (e.touches.length === 1 && initialPinchDist === null) {
-                // Dragging (Pan)
                 const dx = e.touches[0].clientX - touchStartX;
                 const dy = e.touches[0].clientY - touchStartY;
                 
-                // Convert pixels to slider percentage
                 imgX += (dx / imgContainer.clientWidth) * 100 / imgScale; 
                 imgY += (dy / imgContainer.clientHeight) * 100 / imgScale;
 
@@ -482,7 +447,6 @@
                 updateImgTransform();
                 
             } else if (e.touches.length === 2) {
-                // Pinching (Zoom)
                 const currentDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
@@ -505,8 +469,7 @@
             }
         });
 
-
-        // Bottom Scent Controls
+        // Bottom Scent Controls (Now safely isolated under the image)
         document.getElementById('ctrl-bot-zoom').addEventListener('input', e => {
             const scaleVal = e.target.value;
             root.style.setProperty('--bot-scale', scaleVal);
@@ -515,7 +478,6 @@
             wrapper.style.width = `${100 / scaleVal}%`; 
         });
         document.getElementById('ctrl-bot-squish').addEventListener('input', e => root.style.setProperty('--bot-squish', e.target.value));
-
 
         // --- RESIZER DIVIDER LINE ---
         const resizer = document.getElementById('resizer');
