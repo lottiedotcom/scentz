@@ -15,7 +15,6 @@
             --dark-pink: #ffb6c1;
             --button-grey: #4a4a4a;
             
-            /* Manual Control Variables */
             --img-scale: 1;
             --img-x: 0%;
             --img-y: 0%;
@@ -34,7 +33,6 @@
             gap: 20px;
         }
 
-        /* Top Controls UI */
         .ui-panel {
             width: 100%;
             max-width: 500px;
@@ -87,7 +85,6 @@
             cursor: pointer;
         }
 
-        /* SLIDER STYLES */
         .slider-group {
             display: flex;
             flex-direction: column;
@@ -165,7 +162,6 @@
             z-index: 10;
         }
 
-        /* --- MOOD BOARD STYLING --- */
         #capture-area {
             width: 100%;
             max-width: 500px;
@@ -314,6 +310,40 @@
 </head>
 <body>
 
+    <!-- ACTION MODAL (EDIT OR DELETE POP-UP) -->
+    <div id="action-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center; padding: 20px;">
+        <div style="background:white; padding:25px; border-radius:12px; width:100%; max-width:320px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+            
+            <!-- Step 1: Choose Action -->
+            <div id="modal-step-1">
+                <h3 style="margin-top:0; color:#333;">Note Options</h3>
+                <p id="modal-note-name" style="margin-bottom:20px; font-size:1rem; color:#666; font-weight:bold;"></p>
+                
+                <button onclick="showEditStep()" style="background:#007bff; margin-bottom:10px;">Edit Note</button>
+                <button onclick="confirmDelete()" style="background:#ff4d4d; margin-bottom:10px;">Delete Note</button>
+                <button onclick="closeModal()" style="background:#e0e0e0; color:#333;">Cancel</button>
+            </div>
+
+            <!-- Step 2: Edit Form -->
+            <div id="modal-step-2" style="display:none;">
+                <h3 style="margin-top:0; color:#333;">Edit Note</h3>
+                
+                <img id="edit-image-preview" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid #ccc; margin:0 auto 10px auto; display:block;">
+                
+                <label class="file-upload-btn" style="background:#e0e0e0; color:#333; margin-bottom:15px;">
+                    Upload Replacement Photo
+                    <input type="file" id="edit-image-upload" accept="image/*">
+                </label>
+                
+                <input type="text" id="edit-name-input" placeholder="Note Name" style="margin-bottom:15px;">
+                
+                <button onclick="saveEdit()" style="background:#28a745; margin-bottom:10px;">Save Changes</button>
+                <button onclick="closeModal()" style="background:#e0e0e0; color:#333;">Cancel</button>
+            </div>
+
+        </div>
+    </div>
+
     <div class="ui-panel">
         <button onclick="toggleLibrary()" style="background: var(--dark-pink); color: #333;">Pick your notes</button>
         
@@ -322,12 +352,12 @@
             <div id="database-list"></div>
         </div>
 
-        <input type="text" id="title-input" placeholder="Enter your mood board title here" oninput="updateTitle()">
-
         <label class="file-upload-btn">
             Add a photo
             <input type="file" id="main-image-upload" accept="image/*">
         </label>
+
+        <input type="text" id="title-input" placeholder="Enter your mood board title here" oninput="updateTitle()">
 
         <div class="color-picker-wrapper">
             <span>Background Color</span>
@@ -339,7 +369,6 @@
 
     <!-- MOOD BOARD DISPLAY -->
     <div id="capture-area">
-        
         <div id="top-section">
             <img id="main-image-display" src="" alt="Atmosphere">
         </div>
@@ -354,10 +383,8 @@
                 <div id="selected-notes-container"></div>
             </div>
         </div>
-
     </div>
 
-    <!-- NEW CONTROLS PANEL DIRECTLY UNDER THE IMAGE -->
     <div class="ui-panel" style="margin-top: 0;">
         <h4 style="margin: 0 0 10px 0; color: var(--dark-pink);">Notes & Scent Adjustments</h4>
         <div class="slider-group">
@@ -398,9 +425,8 @@
 
         const root = document.documentElement;
 
-        // --- DIRECT TOUCH & PAN JAVASCRIPT FOR PHOTO (SLIDERS REMOVED) ---
+        // --- DIRECT TOUCH & PAN JAVASCRIPT FOR PHOTO ---
         const imgContainer = document.getElementById('top-section');
-
         let imgScale = 1;
         let imgX = 0; 
         let imgY = 0; 
@@ -415,7 +441,6 @@
             root.style.setProperty('--img-y', imgY + '%');
         }
 
-        // Touch Interaction State
         let touchStartX = 0, touchStartY = 0;
         let initialPinchDist = null;
 
@@ -469,11 +494,10 @@
             }
         });
 
-        // Bottom Scent Controls (Now safely isolated under the image)
+        // Bottom Scent Controls
         document.getElementById('ctrl-bot-zoom').addEventListener('input', e => {
             const scaleVal = e.target.value;
             root.style.setProperty('--bot-scale', scaleVal);
-            
             const wrapper = document.getElementById('bottom-content-wrapper');
             wrapper.style.width = `${100 / scaleVal}%`; 
         });
@@ -508,10 +532,8 @@
         function adjustHeight(clientY) {
             const containerRect = captureArea.getBoundingClientRect();
             let newHeightPercent = ((clientY - containerRect.top) / containerRect.height) * 100;
-            
             if (newHeightPercent < 15) newHeightPercent = 15;
             if (newHeightPercent > 85) newHeightPercent = 85;
-            
             imgContainer.style.height = `${newHeightPercent}%`;
         }
 
@@ -521,7 +543,6 @@
             document.removeEventListener('touchmove', handleTouchMoveResizer);
         }
 
-        // --- GENERAL UI ---
         function toggleLibrary() {
             const lib = document.getElementById('library-section');
             lib.style.display = lib.style.display === 'flex' ? 'none' : 'flex';
@@ -543,7 +564,6 @@
                 reader.onload = (e) => {
                     const img = document.getElementById('main-image-display');
                     img.src = e.target.result;
-                    
                     document.getElementById('top-section').style.display = 'block';
                     document.getElementById('resizer').style.display = 'flex';
                 };
@@ -556,14 +576,12 @@
             const boardNote = document.createElement('div');
             boardNote.className = 'board-note';
             boardNote.innerHTML = `<img src="${imgSrc}"><span>${name}</span>`;
-            
             boardNote.onclick = function() { this.remove(); };
             container.appendChild(boardNote);
         }
 
         function saveImage() {
             const titleDisplay = document.getElementById('board-title-display');
-            
             const originalText = titleDisplay.innerText;
             if (originalText === "Title will appear here...") {
                 titleDisplay.innerText = "";
@@ -586,15 +604,17 @@
                 link.download = (document.getElementById('title-input').value || 'scent-board') + '.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
-                
                 titleDisplay.innerText = originalText;
                 if(wasResizerVisible) resizer.style.display = 'flex';
             });
         }
 
-        // --- Database Logic ---
+        // --- Database & Modal Logic ---
         let db;
         let allNotes = [];
+        let currentEditId = null;
+        let currentEditImg = null;
+
         const request = indexedDB.open("ScentDatabase", 1);
 
         request.onupgradeneeded = function(e) {
@@ -630,16 +650,79 @@
             reader.readAsDataURL(file);
         }
 
-        function deleteFromDB(id, event) {
-            event.stopPropagation(); 
-            if(!confirm("Are you sure you wanna delete this?")) return;
+        // MODAL CONTROLS
+        function openNoteOptions(id, event) {
+            event.stopPropagation();
+            const note = allNotes.find(n => n.id === id);
+            if(!note) return;
+
+            currentEditId = id;
+            currentEditImg = note.image;
             
+            document.getElementById('modal-note-name').innerText = `"${note.name}"`;
+            document.getElementById('edit-name-input').value = note.name;
+            document.getElementById('edit-image-upload').value = '';
+            document.getElementById('edit-image-preview').src = note.image;
+
+            document.getElementById('modal-step-1').style.display = 'block';
+            document.getElementById('modal-step-2').style.display = 'none';
+            document.getElementById('action-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('action-modal').style.display = 'none';
+            currentEditId = null;
+            currentEditImg = null;
+        }
+
+        function showEditStep() {
+            document.getElementById('modal-step-1').style.display = 'none';
+            document.getElementById('modal-step-2').style.display = 'block';
+        }
+
+        function confirmDelete() {
+            if (!currentEditId) return;
+            const transaction = db.transaction(["scents"], "readwrite");
+            transaction.objectStore("scents").delete(currentEditId);
+            transaction.oncomplete = function() {
+                closeModal();
+                loadDatabaseView(); 
+            };
+        }
+
+        // Live Preview of Replacement Edit Photo
+        document.getElementById('edit-image-upload').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentEditImg = e.target.result;
+                    document.getElementById('edit-image-preview').src = currentEditImg;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Save Edits to DB
+        function saveEdit() {
+            if (!currentEditId) return;
+            const newName = document.getElementById('edit-name-input').value.trim();
+            if (!newName) return alert("Note name cannot be empty.");
+
             const transaction = db.transaction(["scents"], "readwrite");
             const store = transaction.objectStore("scents");
-            store.delete(id);
             
-            transaction.oncomplete = function() {
-                loadDatabaseView(); 
+            const getReq = store.get(currentEditId);
+            getReq.onsuccess = function() {
+                const data = getReq.result;
+                data.name = newName;
+                data.image = currentEditImg;
+                
+                const updateReq = store.put(data);
+                updateReq.onsuccess = function() {
+                    closeModal();
+                    loadDatabaseView();
+                };
             };
         }
 
@@ -663,7 +746,7 @@
                 item.className = 'db-note';
                 
                 item.innerHTML = `
-                    <div class="delete-db-item" onclick="deleteFromDB(${note.id}, event)">×</div>
+                    <div class="delete-db-item" onclick="openNoteOptions(${note.id}, event)">×</div>
                     <img src="${note.image}" alt="${note.name}">
                     <span>${note.name}</span>
                 `;
