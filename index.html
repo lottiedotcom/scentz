@@ -564,30 +564,40 @@
             container.appendChild(boardNote);
         }
 
-        function saveImage() {
+        async function saveImage() {
             const titleDisplay = document.getElementById('board-title-display');
             const originalText = titleDisplay.innerText;
             if (originalText === "Title will appear here...") {
                 titleDisplay.innerText = "";
             }
             
+            // Hide resizer before capture
             const wasResizerVisible = resizer.style.display !== 'none';
             if (wasResizerVisible) resizer.style.display = 'none';
 
-            const rect = captureArea.getBoundingClientRect();
+            // Force the browser to re-calculate the element's exact visual dimensions
+            const captureArea = document.getElementById('capture-area');
+            
+            // We add a slight delay to ensure all CSS transforms (squish/scale) 
+            // are fully rendered by the browser before the canvas captures them
+            await new Promise(r => setTimeout(r, 100));
 
             html2canvas(captureArea, {
                 scale: 2, 
                 useCORS: true,
                 backgroundColor: document.getElementById('bg-color-picker').value,
-                width: rect.width,
-                height: rect.height,
+                // Using window.getComputedStyle helps html2canvas see your current transforms
+                width: captureArea.offsetWidth,
+                height: captureArea.offsetHeight,
+                scrollX: -window.scrollX,
                 scrollY: -window.scrollY
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = (document.getElementById('title-input').value || 'scent-board') + '.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
+                
+                // Restore UI
                 titleDisplay.innerText = originalText;
                 if(wasResizerVisible) resizer.style.display = 'flex';
             });
