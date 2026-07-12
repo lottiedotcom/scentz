@@ -1,6 +1,7 @@
 {
   "name": "scent-studio",
   "version": "1.0.0",
+  "type": "module",
   "dependencies": {
     "@vercel/blob": "latest",
     "redis": "latest"
