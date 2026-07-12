@@ -1,11 +1,8 @@
-import { kv } from '@vercel/kv';
+import { createClient } from 'redis';
+const client = createClient({ url: process.env.REDIS_URL });
+await client.connect();
 
 export default async function handler(request, response) {
-    try {
-        // Fetches your entire library from the cloud
-        const scents = await kv.get('scents') || [];
-        return response.status(200).json(scents);
-    } catch (error) {
-        return response.status(500).json({ error: error.message });
-    }
+    const scents = await client.get('scents');
+    return response.status(200).json(scents ? JSON.parse(scents) : []);
 }
