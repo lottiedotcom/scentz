@@ -570,6 +570,7 @@
             if (originalText === "Title will appear here...") {
                 titleDisplay.innerText = "";
             }
+            
             const wasResizerVisible = resizer.style.display !== 'none';
             if (wasResizerVisible) resizer.style.display = 'none';
 
@@ -612,6 +613,8 @@
             const listContainer = document.getElementById('database-list');
             listContainer.innerHTML = '';
             
+            if (!notesArray || !Array.isArray(notesArray)) return;
+
             notesArray.forEach(note => {
                 const item = document.createElement('div');
                 item.className = 'db-note';
@@ -648,15 +651,18 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: name, imageBase64: e.target.result })
                     });
+                    
                     if (response.ok) {
                         fileInput.value = '';
                         nameInput.value = '';
                         await loadDatabaseView();
                     } else {
-                        alert("Upload failed.");
+                        // THIS GRABS THE EXACT VERCEL ERROR
+                        const errorData = await response.json();
+                        alert("Cloud Error: " + (errorData.error || "Unknown Server Error"));
                     }
                 } catch (err) {
-                    alert("Error connecting to server.");
+                    alert("Network Error: " + err.message);
                 }
                 btn.innerText = "Save Note to Database";
                 btn.disabled = false;
@@ -707,12 +713,16 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: currentEditId })
                 });
+                
                 if (response.ok) {
                     closeModal();
                     await loadDatabaseView();
+                } else {
+                    const errorData = await response.json();
+                    alert("Delete Error: " + (errorData.error || "Unknown error"));
                 }
             } catch (err) {
-                alert("Error deleting note.");
+                alert("Network Error: " + err.message);
             }
             btn.innerText = "Delete Note";
             btn.disabled = false;
@@ -756,10 +766,11 @@
                     closeModal();
                     await loadDatabaseView();
                 } else {
-                    alert("Failed to save edit.");
+                    const errorData = await response.json();
+                    alert("Edit Error: " + (errorData.error || "Unknown Server Error"));
                 }
             } catch (err) {
-                alert("Error saving to cloud.");
+                alert("Network Error: " + err.message);
             }
 
             btn.innerText = "Save Changes";
