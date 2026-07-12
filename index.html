@@ -314,17 +314,15 @@
     <div id="action-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center; padding: 20px;">
         <div style="background:white; padding:25px; border-radius:12px; width:100%; max-width:320px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
             
-            <!-- Step 1: Choose Action -->
             <div id="modal-step-1">
                 <h3 style="margin-top:0; color:#333;">Note Options</h3>
                 <p id="modal-note-name" style="margin-bottom:20px; font-size:1rem; color:#666; font-weight:bold;"></p>
                 
                 <button onclick="showEditStep()" style="background:#007bff; margin-bottom:10px;">Edit Note</button>
-                <button onclick="confirmDelete()" style="background:#ff4d4d; margin-bottom:10px;">Delete Note</button>
+                <button id="btn-delete" onclick="confirmDelete(event)" style="background:#ff4d4d; margin-bottom:10px;">Delete Note</button>
                 <button onclick="closeModal()" style="background:#e0e0e0; color:#333;">Cancel</button>
             </div>
 
-            <!-- Step 2: Edit Form -->
             <div id="modal-step-2" style="display:none;">
                 <h3 style="margin-top:0; color:#333;">Edit Note</h3>
                 
@@ -337,10 +335,9 @@
                 
                 <input type="text" id="edit-name-input" placeholder="Note Name" style="margin-bottom:15px;">
                 
-                <button onclick="saveEdit()" style="background:#28a745; margin-bottom:10px;">Save Changes</button>
+                <button id="btn-save-edit" onclick="saveEdit(event)" style="background:#28a745; margin-bottom:10px;">Save Changes</button>
                 <button onclick="closeModal()" style="background:#e0e0e0; color:#333;">Cancel</button>
             </div>
-
         </div>
     </div>
 
@@ -406,15 +403,11 @@
                 <input type="file" id="note-image-upload" accept="image/*">
             </label>
             <input type="text" id="note-name-input" placeholder="Note Title (e.g., Cold Air)">
-            <button onclick="saveToIndexedDB()">Save Note to Database</button>
+            <button id="btn-save-new" onclick="saveToDatabase(event)">Save Note to Database</button>
         </div>
         <div class="db-manage-group">
             <strong>Backup & Restore</strong>
             <button onclick="exportDatabase()" style="background: #ccc; color: #333;">Export Database Backup</button>
-            <label class="file-upload-btn" style="background: #ccc; color: #333;">
-                Import Backup
-                <input type="file" id="import-file" accept=".json" onchange="importDatabase(event)">
-            </label>
         </div>
     </details>
 
@@ -458,25 +451,19 @@
 
         imgContainer.addEventListener('touchmove', e => {
             e.preventDefault(); 
-            
             if (e.touches.length === 1 && initialPinchDist === null) {
                 const dx = e.touches[0].clientX - touchStartX;
                 const dy = e.touches[0].clientY - touchStartY;
-                
                 imgX += (dx / imgContainer.clientWidth) * 100 / imgScale; 
                 imgY += (dy / imgContainer.clientHeight) * 100 / imgScale;
-
                 touchStartX = e.touches[0].clientX;
                 touchStartY = e.touches[0].clientY;
-                
                 updateImgTransform();
-                
             } else if (e.touches.length === 2) {
                 const currentDist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
-                
                 if (initialPinchDist) {
                     const scaleDelta = currentDist / initialPinchDist;
                     imgScale *= scaleDelta;
@@ -494,7 +481,6 @@
             }
         });
 
-        // Bottom Scent Controls
         document.getElementById('ctrl-bot-zoom').addEventListener('input', e => {
             const scaleVal = e.target.value;
             root.style.setProperty('--bot-scale', scaleVal);
@@ -503,7 +489,6 @@
         });
         document.getElementById('ctrl-bot-squish').addEventListener('input', e => root.style.setProperty('--bot-squish', e.target.value));
 
-        // --- RESIZER DIVIDER LINE ---
         const resizer = document.getElementById('resizer');
         const captureArea = document.getElementById('capture-area');
         let isResizing = false;
@@ -521,7 +506,6 @@
         });
 
         function handleMouseMoveResizer(e) { if (isResizing) adjustHeight(e.clientY); }
-        
         function handleTouchMoveResizer(e) {
             if (isResizing) {
                 e.preventDefault(); 
@@ -586,7 +570,6 @@
             if (originalText === "Title will appear here...") {
                 titleDisplay.innerText = "";
             }
-            
             const wasResizerVisible = resizer.style.display !== 'none';
             if (wasResizerVisible) resizer.style.display = 'none';
 
@@ -609,48 +592,78 @@
             });
         }
 
-        // --- Database & Modal Logic ---
-        let db;
+        // --- CLOUD DATABASE LOGIC ---
         let allNotes = [];
         let currentEditId = null;
         let currentEditImg = null;
+        let isNewEditImage = false;
 
-        const request = indexedDB.open("ScentDatabase", 1);
+        async function loadDatabaseView() {
+            try {
+                const response = await fetch('/api/get-scents');
+                allNotes = await response.json() || [];
+                renderNotesList(allNotes);
+            } catch (err) {
+                console.error("Failed to load:", err);
+            }
+        }
 
-        request.onupgradeneeded = function(e) {
-            db = e.target.result;
-            db.createObjectStore("scents", { keyPath: "id", autoIncrement: true });
-        };
+        function renderNotesList(notesArray) {
+            const listContainer = document.getElementById('database-list');
+            listContainer.innerHTML = '';
+            
+            notesArray.forEach(note => {
+                const item = document.createElement('div');
+                item.className = 'db-note';
+                item.innerHTML = `
+                    <div class="delete-db-item" onclick="openNoteOptions(${note.id}, event)">×</div>
+                    <img src="${note.image}" alt="${note.name}">
+                    <span>${note.name}</span>
+                `;
+                item.addEventListener('click', (e) => {
+                    if(e.target.className === 'delete-db-item') return;
+                    addNoteToBoard(note.image, note.name);
+                });
+                listContainer.appendChild(item);
+            });
+        }
 
-        request.onsuccess = function(e) {
-            db = e.target.result;
-            loadDatabaseView();
-        };
-
-        function saveToIndexedDB() {
+        async function saveToDatabase(event) {
             const fileInput = document.getElementById('note-image-upload');
             const nameInput = document.getElementById('note-name-input');
             const file = fileInput.files[0];
             const name = nameInput.value.trim();
+            const btn = event.target;
 
             if (!file || !name) return alert("Please select an image and enter a name.");
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const transaction = db.transaction(["scents"], "readwrite");
-                const store = transaction.objectStore("scents");
-                store.add({ name: name, image: e.target.result });
+            btn.innerText = "Saving to cloud...";
+            btn.disabled = true;
 
-                transaction.oncomplete = function() {
-                    fileInput.value = '';
-                    nameInput.value = '';
-                    loadDatabaseView();
-                };
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const response = await fetch('/api/add-scent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name, imageBase64: e.target.result })
+                    });
+                    if (response.ok) {
+                        fileInput.value = '';
+                        nameInput.value = '';
+                        await loadDatabaseView();
+                    } else {
+                        alert("Upload failed.");
+                    }
+                } catch (err) {
+                    alert("Error connecting to server.");
+                }
+                btn.innerText = "Save Note to Database";
+                btn.disabled = false;
             };
             reader.readAsDataURL(file);
         }
 
-        // MODAL CONTROLS
         function openNoteOptions(id, event) {
             event.stopPropagation();
             const note = allNotes.find(n => n.id === id);
@@ -658,6 +671,7 @@
 
             currentEditId = id;
             currentEditImg = note.image;
+            isNewEditImage = false;
             
             document.getElementById('modal-note-name').innerText = `"${note.name}"`;
             document.getElementById('edit-name-input').value = note.name;
@@ -673,6 +687,7 @@
             document.getElementById('action-modal').style.display = 'none';
             currentEditId = null;
             currentEditImg = null;
+            isNewEditImage = false;
         }
 
         function showEditStep() {
@@ -680,83 +695,75 @@
             document.getElementById('modal-step-2').style.display = 'block';
         }
 
-        function confirmDelete() {
+        async function confirmDelete(event) {
             if (!currentEditId) return;
-            const transaction = db.transaction(["scents"], "readwrite");
-            transaction.objectStore("scents").delete(currentEditId);
-            transaction.oncomplete = function() {
-                closeModal();
-                loadDatabaseView(); 
-            };
+            const btn = event.target;
+            btn.innerText = "Deleting...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/delete-scent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentEditId })
+                });
+                if (response.ok) {
+                    closeModal();
+                    await loadDatabaseView();
+                }
+            } catch (err) {
+                alert("Error deleting note.");
+            }
+            btn.innerText = "Delete Note";
+            btn.disabled = false;
         }
 
-        // Live Preview of Replacement Edit Photo
         document.getElementById('edit-image-upload').addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     currentEditImg = e.target.result;
+                    isNewEditImage = true;
                     document.getElementById('edit-image-preview').src = currentEditImg;
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // Save Edits to DB
-        function saveEdit() {
+        async function saveEdit(event) {
             if (!currentEditId) return;
             const newName = document.getElementById('edit-name-input').value.trim();
             if (!newName) return alert("Note name cannot be empty.");
 
-            const transaction = db.transaction(["scents"], "readwrite");
-            const store = transaction.objectStore("scents");
-            
-            const getReq = store.get(currentEditId);
-            getReq.onsuccess = function() {
-                const data = getReq.result;
-                data.name = newName;
-                data.image = currentEditImg;
-                
-                const updateReq = store.put(data);
-                updateReq.onsuccess = function() {
-                    closeModal();
-                    loadDatabaseView();
-                };
-            };
-        }
+            const btn = event.target;
+            btn.innerText = "Saving edit...";
+            btn.disabled = true;
 
-        function loadDatabaseView() {
-            const transaction = db.transaction(["scents"], "readonly");
-            const store = transaction.objectStore("scents");
-            const getAll = store.getAll();
-
-            getAll.onsuccess = function() {
-                allNotes = getAll.result;
-                renderNotesList(allNotes);
-            };
-        }
-
-        function renderNotesList(notesArray) {
-            const listContainer = document.getElementById('database-list');
-            listContainer.innerHTML = '';
-            
-            notesArray.forEach(note => {
-                const item = document.createElement('div');
-                item.className = 'db-note';
-                
-                item.innerHTML = `
-                    <div class="delete-db-item" onclick="openNoteOptions(${note.id}, event)">×</div>
-                    <img src="${note.image}" alt="${note.name}">
-                    <span>${note.name}</span>
-                `;
-                
-                item.addEventListener('click', (e) => {
-                    if(e.target.className === 'delete-db-item') return;
-                    addNoteToBoard(note.image, note.name);
+            try {
+                const response = await fetch('/api/edit-scent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        id: currentEditId, 
+                        name: newName, 
+                        imageBase64: currentEditImg, 
+                        isNewImage: isNewEditImage 
+                    })
                 });
-                listContainer.appendChild(item);
-            });
+
+                if (response.ok) {
+                    closeModal();
+                    await loadDatabaseView();
+                } else {
+                    alert("Failed to save edit.");
+                }
+            } catch (err) {
+                alert("Error saving to cloud.");
+            }
+
+            btn.innerText = "Save Changes";
+            btn.disabled = false;
         }
 
         function filterDatabase() {
@@ -767,41 +774,20 @@
 
         function exportDatabase() {
             if(allNotes.length === 0) return alert("Your database is empty.");
-            
             const jsonData = JSON.stringify(allNotes);
             const blob = new Blob([jsonData], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", url);
-            downloadAnchor.setAttribute("download", "scent_database_backup.json");
+            downloadAnchor.setAttribute("download", "scent_database_cloud_backup.json");
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
-            
             document.body.removeChild(downloadAnchor);
             URL.revokeObjectURL(url);
         }
 
-        function importDatabase(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    const transaction = db.transaction(["scents"], "readwrite");
-                    const store = transaction.objectStore("scents");
-                    
-                    importedData.forEach(item => { delete item.id; store.add(item); });
-                    
-                    transaction.oncomplete = function() {
-                        alert("Database backup imported successfully!");
-                        loadDatabaseView();
-                    };
-                } catch(err) { alert("Error parsing backup file."); }
-            };
-            reader.readAsText(file);
-        }
+        // Initialize on load
+        loadDatabaseView();
     </script>
 </body>
 </html>
