@@ -229,7 +229,6 @@
             width: 100%;
             padding: 0.8em;
             box-sizing: border-box; 
-            /* Hardware acceleration for buttery smooth sliders */
             transform: scale(var(--bot-scale)) scaleY(var(--bot-squish)) translateZ(0);
             transform-origin: top left;
             will-change: transform;
@@ -317,10 +316,10 @@
 </head>
 <body>
 
-    <!-- CROP MODAL -->
+    <!-- MAIN BACKGROUND CROP MODAL -->
     <div id="crop-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; flex-direction:column; align-items:center; justify-content:center;">
         <div style="width: 90%; max-width: 400px; background: white; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px;">
-            <h3 style="margin: 0; text-align: center; color: #333;">Frame Your Scent</h3>
+            <h3 style="margin: 0; text-align: center; color: #333;">Frame Your Background</h3>
             <div style="width: 100%; max-height: 400px; overflow: hidden; border-radius: 8px;">
                 <img id="crop-image-target" style="max-width: 100%; display: block;">
             </div>
@@ -417,9 +416,6 @@
         <summary>Database Settings (Add Notes / Backup)</summary>
         <div class="db-manage-group">
             <strong>Add New Note</strong>
-            <div id="new-note-preview-container" style="display:none; text-align:center; margin-bottom: 10px;">
-                <img id="new-note-preview" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid #ccc;">
-            </div>
             <label class="file-upload-btn" style="background: #ccc; color: #333;">
                 Choose Image
                 <input type="file" id="note-image-upload" accept="image/*">
@@ -567,19 +563,54 @@
             document.getElementById('capture-area').style.backgroundColor = e.target.value;
         });
 
-        document.getElementById('main-image-upload').addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
+        // --- MAIN BACKGROUND CROPPER LOGIC ---
+        let cropper;
+
+        function openCropModal(imageSrc) {
+            document.getElementById('crop-modal').style.display = 'flex';
+            const imgTarget = document.getElementById('crop-image-target');
+            imgTarget.src = imageSrc;
+
+            if(cropper) cropper.destroy();
+            cropper = new Cropper(imgTarget, {
+                aspectRatio: NaN, // Freeform cropping for the background
+                viewMode: 1,
+                autoCropArea: 1,
+            });
+        }
+
+        function closeCropModal() {
+            document.getElementById('crop-modal').style.display = 'none';
+            if(cropper) cropper.destroy();
+            document.getElementById('main-image-upload').value = '';
+        }
+
+        document.getElementById('btn-crop-confirm').addEventListener('click', () => {
+            if(!cropper) return;
+            // Get high res crop without locking it to a small box
+            const canvas = cropper.getCroppedCanvas({ maxWidth: 2000, maxHeight: 2000 });
+            const base64Crop = canvas.toDataURL('image/jpeg', 0.85);
+
+            const img = document.getElementById('main-image-display');
+            img.src = base64Crop;
+            document.getElementById('top-section').style.display = 'block';
+            document.getElementById('resizer').style.display = 'flex';
+            
+            // Reset panning and zooming for the new image so it's perfectly centered
+            imgScale = 1; imgX = 0; imgY = 0;
+            updateImgTransform();
+            
+            closeCropModal();
+        });
+
+        document.getElementById('main-image-upload').addEventListener('change', function(e) {
+            if(e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = document.getElementById('main-image-display');
-                    img.src = e.target.result;
-                    document.getElementById('top-section').style.display = 'block';
-                    document.getElementById('resizer').style.display = 'flex';
-                };
-                reader.readAsDataURL(file);
+                reader.onload = (e) => openCropModal(e.target.result);
+                reader.readAsDataURL(e.target.files[0]);
             }
         });
+
 
         function addNoteToBoard(imgSrc, name) {
             const container = document.getElementById('selected-notes-container');
@@ -624,69 +655,11 @@
             });
         }
 
-        // --- CLOUD DATABASE & CROPPER LOGIC ---
+        // --- CLOUD DATABASE LOGIC (Restored to original base64 processing) ---
         let allNotes = [];
         let currentEditId = null;
         let currentEditImg = null;
         let isNewEditImage = false;
-        
-        let cropper;
-        let cropTargetAction = ''; 
-        let pendingNewNoteBase64 = null;
-
-        function openCropModal(imageSrc, action) {
-            cropTargetAction = action;
-            document.getElementById('crop-modal').style.display = 'flex';
-            const imgTarget = document.getElementById('crop-image-target');
-            imgTarget.src = imageSrc;
-
-            if(cropper) cropper.destroy();
-            cropper = new Cropper(imgTarget, {
-                aspectRatio: 1, // Forces a perfect square crop
-                viewMode: 1,
-                autoCropArea: 1,
-            });
-        }
-
-        function closeCropModal() {
-            document.getElementById('crop-modal').style.display = 'none';
-            if(cropper) cropper.destroy();
-            document.getElementById('note-image-upload').value = '';
-            document.getElementById('edit-image-upload').value = '';
-        }
-
-        document.getElementById('btn-crop-confirm').addEventListener('click', () => {
-            if(!cropper) return;
-            const canvas = cropper.getCroppedCanvas({ width: 400, height: 400 });
-            const base64Crop = canvas.toDataURL('image/jpeg', 0.85);
-
-            if(cropTargetAction === 'new') {
-                pendingNewNoteBase64 = base64Crop;
-                document.getElementById('new-note-preview-container').style.display = 'block';
-                document.getElementById('new-note-preview').src = pendingNewNoteBase64;
-            } else if (cropTargetAction === 'edit') {
-                currentEditImg = base64Crop;
-                isNewEditImage = true;
-                document.getElementById('edit-image-preview').src = currentEditImg;
-            }
-            closeCropModal();
-        });
-
-        document.getElementById('note-image-upload').addEventListener('change', function(e) {
-            if(e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => openCropModal(e.target.result, 'new');
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        });
-
-        document.getElementById('edit-image-upload').addEventListener('change', function(e) {
-            if(e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => openCropModal(e.target.result, 'edit');
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        });
 
         async function loadDatabaseView() {
             try {
@@ -721,36 +694,41 @@
         }
 
         async function saveToDatabase(event) {
+            const fileInput = document.getElementById('note-image-upload');
             const nameInput = document.getElementById('note-name-input');
+            const file = fileInput.files[0];
             const name = nameInput.value.trim();
             const btn = event.target;
 
-            if (!pendingNewNoteBase64 || !name) return alert("Please select an image to crop and enter a name.");
+            if (!file || !name) return alert("Please select an image and enter a name.");
 
             btn.innerText = "Saving to cloud...";
             btn.disabled = true;
 
-            try {
-                const response = await fetch('/api/add-scent', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, imageBase64: pendingNewNoteBase64 })
-                });
-                
-                if (response.ok) {
-                    nameInput.value = '';
-                    pendingNewNoteBase64 = null;
-                    document.getElementById('new-note-preview-container').style.display = 'none';
-                    await loadDatabaseView();
-                } else {
-                    const errorData = await response.json();
-                    alert("Cloud Error: " + (errorData.error || "Unknown Server Error"));
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const response = await fetch('/api/add-scent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name, imageBase64: e.target.result })
+                    });
+                    
+                    if (response.ok) {
+                        fileInput.value = '';
+                        nameInput.value = '';
+                        await loadDatabaseView();
+                    } else {
+                        const errorData = await response.json();
+                        alert("Cloud Error: " + (errorData.error || "Unknown Server Error"));
+                    }
+                } catch (err) {
+                    alert("Network Error: " + err.message);
                 }
-            } catch (err) {
-                alert("Network Error: " + err.message);
-            }
-            btn.innerText = "Save Note to Database";
-            btn.disabled = false;
+                btn.innerText = "Save Note to Database";
+                btn.disabled = false;
+            };
+            reader.readAsDataURL(file);
         }
 
         function openNoteOptions(id, event) {
@@ -810,6 +788,19 @@
             btn.innerText = "Delete Note";
             btn.disabled = false;
         }
+
+        document.getElementById('edit-image-upload').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentEditImg = e.target.result;
+                    isNewEditImage = true;
+                    document.getElementById('edit-image-preview').src = currentEditImg;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         async function saveEdit(event) {
             if (!currentEditId) return;
