@@ -192,7 +192,7 @@
         #main-image-display {
             width: 100%;
             height: 100%; 
-            object-fit: contain; /* <--- This forces the image to stay fully visible without cropping */
+            object-fit: contain;
             display: block;
             transform: scale(var(--img-scale)) translate(var(--img-x), var(--img-y));
             transform-origin: center center;
@@ -628,9 +628,9 @@
                 titleDisplay.innerText = "";
             }
             
-            // Hide resizer before capture
+            // Turn resizer invisible instead of removing it to stop layout jumping
             const wasResizerVisible = resizer.style.display !== 'none';
-            if (wasResizerVisible) resizer.style.display = 'none';
+            if (wasResizerVisible) resizer.style.visibility = 'hidden';
 
             const captureArea = document.getElementById('capture-area');
             await new Promise(r => setTimeout(r, 100));
@@ -651,7 +651,7 @@
                 
                 // Restore UI
                 titleDisplay.innerText = originalText;
-                if(wasResizerVisible) resizer.style.display = 'flex';
+                if (wasResizerVisible) resizer.style.visibility = ''; // brings it back
             });
         }
 
