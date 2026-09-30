@@ -7,7 +7,12 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Cropper.js for image cropping -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <style>
         :root {
             --bg-board-default: #c9f5d1;
@@ -224,8 +229,10 @@
             width: 100%;
             padding: 0.8em;
             box-sizing: border-box; 
-            transform: scale(var(--bot-scale)) scaleY(var(--bot-squish));
+            /* Hardware acceleration for buttery smooth sliders */
+            transform: scale(var(--bot-scale)) scaleY(var(--bot-squish)) translateZ(0);
             transform-origin: top left;
+            will-change: transform;
         }
         
         #board-title-display {
@@ -310,6 +317,18 @@
 </head>
 <body>
 
+    <!-- CROP MODAL -->
+    <div id="crop-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="width: 90%; max-width: 400px; background: white; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px;">
+            <h3 style="margin: 0; text-align: center; color: #333;">Frame Your Scent</h3>
+            <div style="width: 100%; max-height: 400px; overflow: hidden; border-radius: 8px;">
+                <img id="crop-image-target" style="max-width: 100%; display: block;">
+            </div>
+            <button id="btn-crop-confirm" style="background: #28a745; padding: 15px; font-size: 1.1rem;">Crop & Use Photo</button>
+            <button onclick="closeCropModal()" style="background: #e0e0e0; color: #333;">Cancel</button>
+        </div>
+    </div>
+
     <!-- ACTION MODAL (EDIT OR DELETE POP-UP) -->
     <div id="action-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center; padding: 20px;">
         <div style="background:white; padding:25px; border-radius:12px; width:100%; max-width:320px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
@@ -386,11 +405,11 @@
         <h4 style="margin: 0 0 10px 0; color: var(--dark-pink);">Notes & Scent Adjustments</h4>
         <div class="slider-group">
             <label>Overall Scent Size</label>
-            <input type="range" id="ctrl-bot-zoom" min="0.4" max="2" step="0.05" value="1">
+            <input type="range" id="ctrl-bot-zoom" min="0.4" max="1.6" step="0.01" value="1">
         </div>
         <div class="slider-group">
             <label>Squish Height (Perspective)</label>
-            <input type="range" id="ctrl-bot-squish" min="0.4" max="1.5" step="0.05" value="1">
+            <input type="range" id="ctrl-bot-squish" min="0.5" max="1.3" step="0.01" value="1">
         </div>
     </div>
 
@@ -398,6 +417,9 @@
         <summary>Database Settings (Add Notes / Backup)</summary>
         <div class="db-manage-group">
             <strong>Add New Note</strong>
+            <div id="new-note-preview-container" style="display:none; text-align:center; margin-bottom: 10px;">
+                <img id="new-note-preview" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid #ccc;">
+            </div>
             <label class="file-upload-btn" style="background: #ccc; color: #333;">
                 Choose Image
                 <input type="file" id="note-image-upload" accept="image/*">
@@ -579,18 +601,13 @@
             const wasResizerVisible = resizer.style.display !== 'none';
             if (wasResizerVisible) resizer.style.display = 'none';
 
-            // Force the browser to re-calculate the element's exact visual dimensions
             const captureArea = document.getElementById('capture-area');
-            
-            // We add a slight delay to ensure all CSS transforms (squish/scale) 
-            // are fully rendered by the browser before the canvas captures them
             await new Promise(r => setTimeout(r, 100));
 
             html2canvas(captureArea, {
                 scale: 2, 
                 useCORS: true,
                 backgroundColor: document.getElementById('bg-color-picker').value,
-                // Using window.getComputedStyle helps html2canvas see your current transforms
                 width: captureArea.offsetWidth,
                 height: captureArea.offsetHeight,
                 scrollX: -window.scrollX,
@@ -607,11 +624,69 @@
             });
         }
 
-        // --- CLOUD DATABASE LOGIC ---
+        // --- CLOUD DATABASE & CROPPER LOGIC ---
         let allNotes = [];
         let currentEditId = null;
         let currentEditImg = null;
         let isNewEditImage = false;
+        
+        let cropper;
+        let cropTargetAction = ''; 
+        let pendingNewNoteBase64 = null;
+
+        function openCropModal(imageSrc, action) {
+            cropTargetAction = action;
+            document.getElementById('crop-modal').style.display = 'flex';
+            const imgTarget = document.getElementById('crop-image-target');
+            imgTarget.src = imageSrc;
+
+            if(cropper) cropper.destroy();
+            cropper = new Cropper(imgTarget, {
+                aspectRatio: 1, // Forces a perfect square crop
+                viewMode: 1,
+                autoCropArea: 1,
+            });
+        }
+
+        function closeCropModal() {
+            document.getElementById('crop-modal').style.display = 'none';
+            if(cropper) cropper.destroy();
+            document.getElementById('note-image-upload').value = '';
+            document.getElementById('edit-image-upload').value = '';
+        }
+
+        document.getElementById('btn-crop-confirm').addEventListener('click', () => {
+            if(!cropper) return;
+            const canvas = cropper.getCroppedCanvas({ width: 400, height: 400 });
+            const base64Crop = canvas.toDataURL('image/jpeg', 0.85);
+
+            if(cropTargetAction === 'new') {
+                pendingNewNoteBase64 = base64Crop;
+                document.getElementById('new-note-preview-container').style.display = 'block';
+                document.getElementById('new-note-preview').src = pendingNewNoteBase64;
+            } else if (cropTargetAction === 'edit') {
+                currentEditImg = base64Crop;
+                isNewEditImage = true;
+                document.getElementById('edit-image-preview').src = currentEditImg;
+            }
+            closeCropModal();
+        });
+
+        document.getElementById('note-image-upload').addEventListener('change', function(e) {
+            if(e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => openCropModal(e.target.result, 'new');
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('edit-image-upload').addEventListener('change', function(e) {
+            if(e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => openCropModal(e.target.result, 'edit');
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
 
         async function loadDatabaseView() {
             try {
@@ -646,42 +721,36 @@
         }
 
         async function saveToDatabase(event) {
-            const fileInput = document.getElementById('note-image-upload');
             const nameInput = document.getElementById('note-name-input');
-            const file = fileInput.files[0];
             const name = nameInput.value.trim();
             const btn = event.target;
 
-            if (!file || !name) return alert("Please select an image and enter a name.");
+            if (!pendingNewNoteBase64 || !name) return alert("Please select an image to crop and enter a name.");
 
             btn.innerText = "Saving to cloud...";
             btn.disabled = true;
 
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const response = await fetch('/api/add-scent', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: name, imageBase64: e.target.result })
-                    });
-                    
-                    if (response.ok) {
-                        fileInput.value = '';
-                        nameInput.value = '';
-                        await loadDatabaseView();
-                    } else {
-                        // THIS GRABS THE EXACT VERCEL ERROR
-                        const errorData = await response.json();
-                        alert("Cloud Error: " + (errorData.error || "Unknown Server Error"));
-                    }
-                } catch (err) {
-                    alert("Network Error: " + err.message);
+            try {
+                const response = await fetch('/api/add-scent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, imageBase64: pendingNewNoteBase64 })
+                });
+                
+                if (response.ok) {
+                    nameInput.value = '';
+                    pendingNewNoteBase64 = null;
+                    document.getElementById('new-note-preview-container').style.display = 'none';
+                    await loadDatabaseView();
+                } else {
+                    const errorData = await response.json();
+                    alert("Cloud Error: " + (errorData.error || "Unknown Server Error"));
                 }
-                btn.innerText = "Save Note to Database";
-                btn.disabled = false;
-            };
-            reader.readAsDataURL(file);
+            } catch (err) {
+                alert("Network Error: " + err.message);
+            }
+            btn.innerText = "Save Note to Database";
+            btn.disabled = false;
         }
 
         function openNoteOptions(id, event) {
@@ -741,19 +810,6 @@
             btn.innerText = "Delete Note";
             btn.disabled = false;
         }
-
-        document.getElementById('edit-image-upload').addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    currentEditImg = e.target.result;
-                    isNewEditImage = true;
-                    document.getElementById('edit-image-preview').src = currentEditImg;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
 
         async function saveEdit(event) {
             if (!currentEditId) return;
