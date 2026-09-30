@@ -407,7 +407,11 @@
         </div>
         <div class="db-manage-group">
             <strong>Backup & Restore</strong>
-            <button onclick="exportDatabase()" style="background: #ccc; color: #333;">Export Database Backup</button>
+            <button onclick="exportDatabase()" style="background: #ccc; color: #333; margin-bottom: 10px;">Export Database Backup</button>
+            <label class="file-upload-btn" style="background: #28a745; color: white;">
+                Import Database Backup
+                <input type="file" id="import-backup-upload" accept=".json">
+            </label>
         </div>
     </details>
 
@@ -807,9 +811,49 @@
             URL.revokeObjectURL(url);
         }
 
+        // --- IMPORT DATABASE BACKUP ---
+        document.getElementById('import-backup-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const importedData = JSON.parse(event.target.result);
+                    
+                    if (!Array.isArray(importedData)) {
+                        return alert("Invalid backup file format. It must be an array of records.");
+                    }
+
+                    const confirmImport = confirm(`This will restore ${importedData.length} records to your database. Do you want to continue?`);
+                    if (!confirmImport) {
+                        e.target.value = ''; // Reset input
+                        return;
+                    }
+
+                    const response = await fetch('/api/add-scent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ importData: importedData })
+                    });
+
+                    if (response.ok) {
+                        alert("Database restored successfully!");
+                        e.target.value = ''; // Reset input
+                        await loadDatabaseView(); // Refresh the grid
+                    } else {
+                        const errorData = await response.json();
+                        alert("Import Error: " + (errorData.error || "Unknown Server Error"));
+                    }
+                } catch (err) {
+                    alert("Error reading file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
         // Initialize on load
         loadDatabaseView();
     </script>
 </body>
 </html>
-
